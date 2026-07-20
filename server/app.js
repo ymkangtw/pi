@@ -81,6 +81,11 @@ app.get('/', function (req, res) {
 	res.send(html);
 });
 
+// SPA fallback：非 /api 的 GET 請求（重新整理或直接開深層網址）一律回傳 index.html，交給前端 Vue Router 處理
+app.get(/^(?!\/api).*/, function (req, res) {
+	res.sendFile(path.resolve(__dirname, '../client/dist/index.html'));
+});
+
 // listen
 const PORT = process.env.APP_PORT || 80;
 app.listen(PORT, function () {

@@ -536,7 +536,7 @@ const p = (value) => {
 
                         <div class="item-align ma4">
                             <span class="label ma2">
-                                <el-button v-if="user.titleid == 'DBDesigner'" type="danger" @click="showDialogDel = true;">刪除全案資料</el-button>
+                                <el-button v-if="user?.titleid == 'DBDesigner'" type="danger" @click="showDialogDel = true;">刪除全案資料</el-button>
                             </span>
                             <span class="value ma2">
 

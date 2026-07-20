@@ -298,13 +298,13 @@ const onMemberChange = (value) => {
 
             <el-col :span="2">
 <!--
-                <el-select v-if="user.titleid == 'DBDesigner'" v-model="sTeam" @change="onTeamChange" placeholder="Select">
+                <el-select v-if="user?.titleid == 'DBDesigner'" v-model="sTeam" @change="onTeamChange" placeholder="Select">
                     <el-option v-for="item in teamList" :key="item.value" :label="item.label" :value="item.value" />
                 </el-select>
 -->
-                <team v-if="user.titleid == 'DBDesigner'" ref="refTeam" :param="teamList" @onChange="onTeamChange" />
+                <team v-if="user?.titleid == 'DBDesigner'" ref="refTeam" :param="teamList" @onChange="onTeamChange" />
 
-                <el-text v-if="user.titleid != 'DBDesigner' && sTeam">
+                <el-text v-if="user?.titleid != 'DBDesigner' && sTeam">
                     {{ sTeam.name }}
                 </el-text>
 

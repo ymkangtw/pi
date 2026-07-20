@@ -363,7 +363,7 @@ const getKPISummary = (param) => {
         <el-row>
             <div class="item-align ma4">
                 <span class="ma8">
-                    <team v-show="user.titleid == 'DBDesigner'" ref="refTeam" :param="teamList" class="ma8" style="width: 100px" @onChange="onTeamChange" />
+                    <team v-show="user?.titleid == 'DBDesigner'" ref="refTeam" :param="teamList" class="ma8" style="width: 100px" @onChange="onTeamChange" />
                 </span>
                 <span class="ma8">
                     <group ref="refGroup" :param="groupList" class="ma8" @onChange="onGroupChange" />
