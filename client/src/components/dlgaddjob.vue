@@ -312,20 +312,6 @@ defineExpose({
 </template>
 
 <style scoped>
-.ma2 {
-    margin: 2px;
-}
-.ma4 {
-    margin: 4px;
-}
-.ma8 {
-    margin: 8px;
-}
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 .label {
     width: 120px;
 }

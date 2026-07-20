@@ -97,27 +97,10 @@ const BackTo = () => {
     width: 600px;
     border-width: 0px;
 }
-.ma4 {
-    margin: 4px;
-}
-.ma8 {
-    margin: 8px;
-}
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 .title {
     font-size: 26px;
     font-weight: bold;
 }
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
 
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
-}
 
 </style>

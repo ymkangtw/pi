@@ -86,7 +86,4 @@ a {
     justify-content: space-between;
 }
 
-.ma4 {
-    margin: 4px;
-}
 </style>

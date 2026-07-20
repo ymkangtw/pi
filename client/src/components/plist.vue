@@ -155,10 +155,4 @@ defineExpose({
 .fs16 {
     font-size: 16px;
 }
-.ma4 {
-    margin: 4px;
-}
-.ma8 {
-    margin: 8px;
-}
 </style>

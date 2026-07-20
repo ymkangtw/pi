@@ -701,39 +701,7 @@ const importMonthReportPrj = async () => {
     </div>
 </template>
 <style scoped>
-.ma2 {
-    margin: 2px;
-}
-.ma4 {
-    margin: 4px;
-}
-.ma8 {
-    margin: 8px;
-}
-.ma16 {
-    margin: 16px;
-}
 
-.fstart {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
-.fcenter {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 .label {
     width: 100px;
 }

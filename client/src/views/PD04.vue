@@ -805,15 +805,6 @@ const OnTabClick = () => {
 .pa4 {
     padding: 8px;
 }
-.ma2 {
-    margin: 2px;
-}
-.ma4 {
-    margin: 4px;
-}
-.ma8 {
-    margin: 8px;
-}
 .badge {
     margin-top: 15px;
     margin-right: 15px;
@@ -844,26 +835,10 @@ const OnTabClick = () => {
     width: 180px;
     height: 100px; 
 }
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
-}
 .fstart {
     display: flex;
     align-items: center;
     justify-content: space-between;
-}
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
 }
 .label {
     width: 100px;

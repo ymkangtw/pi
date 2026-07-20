@@ -455,37 +455,11 @@ const onTabChange = async (value) => {
     font-size: 16px;
 }
 
-.ma4 {
-    margin: 4px;
-}
 
-.ma8 {
-    margin: 8px;
-}
 
-.fstart {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
 
-.fcenter {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
 
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 .item-align-t {
     display: flex;
     align-items: start;

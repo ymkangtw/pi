@@ -148,11 +148,6 @@ const updateContent = async () => {
     font-size: 18px;
     font-weight: bold;
 }
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 .left-col {
     width: 500px;
 }
@@ -165,22 +160,11 @@ const updateContent = async () => {
     width: 900px;
 }
 
-.ma8 {
-    margin: 8px;
-}
-.ma2 {
-    margin: 2px;
-}
 .label {
     width: 120px;
 }
 
 .value {
     width: 140px;
-}
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
 }
 </style>

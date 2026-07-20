@@ -19,6 +19,7 @@ import GroupSvc from '@/service/ugroup.service.js';
 
 //import { trimJSON, saveObj, loadObj } from '@/util/utils.js';
 import * as util from '@/util/utils.js';
+import _ from 'lodash';
 import { useUserStore } from '@/stores/user.js';
 import { useSelectionStore } from '@/stores/selection.js';
 
@@ -363,12 +364,6 @@ const onMemberChange = (value) => {
 </template>
 
 <style scoped>
-.ma2 {
-    margin: 2px;
-}
-.ma8 {
-    margin: 8px;
-}
 .item-align {
     display: flex;
     align-items: center;

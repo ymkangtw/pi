@@ -151,22 +151,6 @@ const handleClick = (value) => {
 .bold {
     font-weight: bold;
 }
-.ma4 {
-    margin: 4px;
-}
-.ma8 {
-    margin: 8px;
-}
-.fstart {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 .label {
     width: 120px;
 }

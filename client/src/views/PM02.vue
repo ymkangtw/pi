@@ -142,16 +142,6 @@ const p = (value) => {
     align-items: center;
     justify-content: space-between;       
 }
-.fstart {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;       
-}
 
 .option-card {
     cursor: pointer;
@@ -174,17 +164,5 @@ const p = (value) => {
     display: flex;
     align-items: center;
     text-align: right;
-}
-.ma8 {
-    margin: 8px;
-}
-.ma2 {
-    margin: 2px;
-}
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
 }
 </style>

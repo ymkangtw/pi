@@ -328,12 +328,6 @@ defineExpose({
     box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
 }
 
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
-}
 
 .ghost-card {
     opacity: 0.9;

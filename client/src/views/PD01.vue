@@ -586,11 +586,6 @@ const p = (value) => {
     </div>
 </template>
 <style scoped>
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 
 .left-col {
     width: 400px;
@@ -619,19 +614,8 @@ const p = (value) => {
 .fs16 {
     font-size: 16px;
 }
-.ma8 {
-    margin: 8px;
-}
 
-.ma2 {
-    margin: 2px;
-}
 
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
 
 .el-input,
 .right-aligned :deep() .el-input__inner {

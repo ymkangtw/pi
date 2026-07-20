@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as dayjs from 'dayjs';
+import _ from 'lodash';
 import { jsPDF } from "jspdf";
 import * as util from '@/util/utils.js';
 import '@/assets/NotoSansTC-normal.js';

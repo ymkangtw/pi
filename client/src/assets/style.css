@@ -308,3 +308,39 @@
 .cursor-pointer {
     cursor: pointer;
 }
+
+/****************************************/
+/* 通用工具類（自各 .vue 元件集中管理；同名但內容不同者仍定義於元件內，scoped 特異度較高會覆蓋此處） */
+
+.ma2 { margin: 2px; }
+.ma4 { margin: 4px; }
+.ma8 { margin: 8px; }
+.ma16 { margin: 16px; }
+
+.fstart {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+}
+.fcenter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+.item-align {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+}
+
+.shadow {
+    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
+}
+.shadow:hover {
+    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
+}

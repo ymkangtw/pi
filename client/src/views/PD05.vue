@@ -3714,17 +3714,8 @@ const test = (item) => {
     </div>
 </template>
 <style scoped>
-.ma2 {
-    margin: 2px;
-}
 
-.ma4 {
-    margin: 4px;
-}
 
-.ma8 {
-    margin: 8px;
-}
 
 .tabtext {
     font-size: 18px;
@@ -3801,25 +3792,9 @@ const test = (item) => {
     font-size: 16px;
 }
 
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
 
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
-}
 
-.fstart {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
 
 .fbetween {
     display: flex;
@@ -3827,11 +3802,6 @@ const test = (item) => {
     justify-content: space-between;
 }
 
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 
 .label {
     width: 100px;

@@ -65,13 +65,7 @@ onMounted(() => {
     </div>
 </template>
 <style scoped>
-.ma4 {
-    margin: 4px;
-}
 
-.ma8 {
-    margin: 8px;
-}
 
 .container {
     display: flex;
@@ -87,12 +81,6 @@ onMounted(() => {
     border-width: 0px;
 }
 
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
-}
 .image {
     width: 100%;
     display: block;

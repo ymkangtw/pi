@@ -525,37 +525,12 @@ const cardColor = (enddate) => {
     margin: 12px;
 }
 
-.ma8 {
-    margin: 8px;
-}
 
-.ma4 {
-    margin: 4px;
-}
 
-.ma2 {
-    margin: 2px;
-}
 
-.fend {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
 
-.shadow {
-    box-shadow: 4px 4px 4px rgba(0, 0, 0, 0.3);
-}
 
-.shadow:hover {
-    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.5);
-}
 
-.item-align {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-}
 
 .label {
     width: 100px;
