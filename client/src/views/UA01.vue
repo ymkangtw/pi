@@ -23,7 +23,11 @@ const password = ref();
 //--------------------------------
 
 onMounted(() => {
-
+    // 自動帶入上次成功登入的職工編號（localStorage 跨分頁共享，僅作預填提示，非登入狀態）
+    const last = localStorage.getItem('pi_lastEmployeeno');
+    if (last) {
+        employeeno.value = last;
+    }
 });
 
 const validateField = (value) => {
@@ -45,6 +49,7 @@ const Login = () => {
             if (data.length > 0) {
                 userStore.login(data[0]);
                 sel.reset();
+                localStorage.setItem('pi_lastEmployeeno', employeeno.value);
                 //console.log('login: ', userStore.identity);
                 router
                     .push({ path: '/' })

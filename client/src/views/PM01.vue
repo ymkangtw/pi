@@ -98,7 +98,11 @@ onMounted(async () => {
             userteam = sel.sTeam;
             refTeam.value.sTeam = userteam;
         } else {
-            sTeam.value = teamList.value.find((o) => { return o.value == userteam; });  
+            sTeam.value = teamList.value.find((o) => { return o.value == userteam; });
+            // DBDesigner 才會渲染 team 元件（v-if），需同步設定元件內部選單值才會預選
+            if (refTeam.value) {
+                refTeam.value.sTeam = userteam;
+            }
         }
 
         //console.log('sTeam.value:', sTeam.value);

@@ -107,6 +107,19 @@ module.exports = (env, argv) => {
         devServer: {
             //compress: true,
             port: 8080,
+            // SPA fallback：深層路徑（如 /PM01）重新整理時回傳 index.html，交給前端 Vue Router 處理
+            historyApiFallback: true,
+            client: {
+                overlay: {
+                    runtimeErrors: (error) => {
+                        // ResizeObserver 的迴圈警告是瀏覽器良性訊息，不顯示紅色錯誤覆蓋層
+                        if (error.message.includes('ResizeObserver loop')) {
+                            return false;
+                        }
+                        return true;
+                    },
+                },
+            },
             static: {
                 directory: path.join(__dirname, 'dist')
             },
