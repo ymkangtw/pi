@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import BasicSvc from '@/service/basic.service.js';
-import { trimJSON, saveObj, loadObj } from '@/util/utils.js';
+import { trimJSON } from '@/util/utils.js';
 import { useSelectionStore } from '@/stores/selection.js';
 import { useRouter } from 'vue-router';
 import _ from 'lodash';
@@ -39,7 +39,8 @@ onMounted(async () => {
     //console.log(b.value.jobno);
     //await chartBudget.value.renderChart(b.value);
     
-    if (_.isEmpty(sel.hist)) {
+    // 判斷 link 值而非 hist 物件本身（Pinia 初始值是 {link:'', listtype:''}，物件永遠非空）
+    if (_.isEmpty(sel.hist.link)) {
         options.value[0].color = `${ccode.blue2}`;
     } else {
         for(let obj of options.value) {
