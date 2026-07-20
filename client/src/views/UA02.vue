@@ -1,16 +1,15 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import EmployeeSvc from '@/service/employee.service.js';
-import { trimJSON, saveObj, loadObj, delObj, clearAll } from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
 import { ElNotification } from 'element-plus';
 
 //--------------------------------
 // Local Variable
 //--------------------------------
 const employeeSvc = new EmployeeSvc();
-const user = ref(null);
-
-user.value = loadObj('user');
+const userStore = useUserStore();
+const user = ref({ ...userStore.identity });   // 編輯用副本，更新成功後才寫回 store
 
 //--------------------------------
 // Local Function
@@ -26,9 +25,7 @@ const Update = () => {
         .then((data) => {
             if (data == 'updated') {
                 ElNotification({title: 'Success', message: '資料更新成功', type: 'success', duration: 1500});
-                user.value.selectedGroup = '';
-                user.value.selectedJobno = '';
-                saveObj('user', user.value);               
+                userStore.updateIdentity(user.value);
             } else {
                 ElNotification({title: 'Error', message: '資料更新失敗', type: 'error', duration: 1500});
             }

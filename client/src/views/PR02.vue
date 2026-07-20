@@ -10,8 +10,6 @@ import * as util from '@/util/utils.js';
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var prjoption = util.loadObj('prjoption');
 
 const basicSvc = new BasicSvc();
 

@@ -22,14 +22,17 @@ import ChartGroupaccumh from '@/components/chartgroupaccumh.vue';
 import * as dayjs from 'dayjs';
 import _ from 'lodash';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 
 //--------------------------------
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 
 const chartkpisum = ref();
 const chartmhsum = ref();

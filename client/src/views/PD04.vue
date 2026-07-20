@@ -7,6 +7,8 @@ import TaskCategorySvc from '@/service/taskcategory.service.js';
 import TaskSvc from '@/service/task.service.js';
 //import { loadObj, saveObj, isSameJobid, onlyInLeft } from '@/util/utils.js';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 
 import * as dayjs from 'dayjs';
@@ -19,7 +21,9 @@ import ChartdtWeight from '@/components/chartdtweight.vue';
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 
 const chartdtWeight = ref();
 
@@ -81,7 +85,7 @@ onMounted(async () => {
 
 const getMember = async () => {
     await memberSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             m.value = data;
         });
@@ -89,8 +93,8 @@ const getMember = async () => {
 
 const getDefMember = () => {
 
-    if (user.sSubjobno > 0) {
-        sSubjobno.value = user.sSubjobno;
+    if (sel.sSubjobno > 0) {
+        sSubjobno.value = sel.sSubjobno;
     } else {
         const sm = m.value.find(obj => { return obj.employeeno == user.employeeno });
         if (sm == undefined) {
@@ -101,7 +105,7 @@ const getDefMember = () => {
         }
     }
 
-    //user.sSubjobno = sSubjobno.value;
+    //sel.sSubjobno = sSubjobno.value;
     //saveObj('user');
     //console.log(sSubjobno.value);
 };
@@ -132,10 +136,9 @@ const getSelectTask = (jobtype) => {
 
 const OnMemberClick = async (subjobno) => {
     sSubjobno.value = subjobno;
-    user.sSubjobno = subjobno;
-    util.saveObj('user', user);
+    sel.sSubjobno = subjobno;
     await estiitemSvc
-        .getBy({ jobno: user.sJobno, subjobno: sSubjobno.value })
+        .getBy({ jobno: sel.sJobno, subjobno: sSubjobno.value })
         .then((data) => {
             es.value = data;
             //ptc.value = tc.value;
@@ -175,14 +178,14 @@ const OnMemberClick = async (subjobno) => {
         });
 
     await estiprojectSvc
-        .getBy({ jobno: user.sJobno, subjobno: sSubjobno.value })
+        .getBy({ jobno: sel.sJobno, subjobno: sSubjobno.value })
         .then((data) => {
             tcr.value = data;
             //console.log('tcr: ', tcr.value);
         });
     if (tcr.value.length < 1) {
         let obj = [{
-            jobno: user.sJobno,
+            jobno: sel.sJobno,
             subjobno: sSubjobno.value,
             id_wt: 0,
             bd_wt: 0,
@@ -222,7 +225,7 @@ const addEstiItem = async () => {
 
     for (let it of addItems) {
         let newItem = {
-            jobno: user.sJobno,
+            jobno: sel.sJobno,
             subjobno: sSubjobno.value,
             jobid: it.jobid,
         };
@@ -232,14 +235,14 @@ const addEstiItem = async () => {
     let delItems = util.onlyInLeft(es.value, selectItem, util.isSameJobid);
     for (let it of delItems) {
         let delItem = {
-            jobno: user.sJobno,
+            jobno: sel.sJobno,
             subjobno: sSubjobno.value,
             jobid: it.jobid,
         };
         await estiitemSvc.remove(delItem);
     }
 
-    let obj = await estiprojectSvc.getBy({ jobno: user.sJobno, subjobno: sSubjobno.value });
+    let obj = await estiprojectSvc.getBy({ jobno: sel.sJobno, subjobno: sSubjobno.value });
 
     if (obj.length < 1) {
         //console.log('create tcr: ', tcr.value);

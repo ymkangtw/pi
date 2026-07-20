@@ -17,6 +17,7 @@ import { ccode } from '@/assets/colorcode.js';
 import * as dayjs from 'dayjs';
 import _ from 'lodash';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
 
 import { ElMessage } from 'element-plus';
 
@@ -24,8 +25,8 @@ import { ElMessage } from 'element-plus';
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
+const userStore = useUserStore();
+var user = userStore.identity;
 
 //個人週報
 const weeklyworkSvc = new WeeklyworkSvc();

@@ -19,13 +19,16 @@ import GroupSvc from '@/service/ugroup.service.js';
 
 //import { trimJSON, saveObj, loadObj } from '@/util/utils.js';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 //console.log('load user');
 const router = useRouter();
 
@@ -68,9 +71,9 @@ const sTeam = ref();
 //--------------------------------
 onMounted(async () => {
     //console.log('PM01 mounted');
-    //console.log('sGroup load:', user.sGroup);
-    if (!_.isEmpty(hist.listtype)) {
-        sListType.value = hist.listtype;
+    //console.log('sGroup load:', sel.sGroup);
+    if (!_.isEmpty(sel.hist.listtype)) {
+        sListType.value = sel.hist.listtype;
     }
 
     if (!_.isEmpty(user)) {
@@ -87,12 +90,12 @@ onMounted(async () => {
             teamList.value.push({value: item.teamno, label: item.teamno, name: item.name });
         }
         //let obj = _.find(teamList.value, (o) => { return o.value == userteam; });
-        //console.log('mount: ', user.sTeam);
+        //console.log('mount: ', sel.sTeam);
 
-        if (!_.isEmpty(user.sTeam)) {
-            let obj = teamList.value.find((o) => { return o.value == user.sTeam; });
+        if (!_.isEmpty(sel.sTeam)) {
+            let obj = teamList.value.find((o) => { return o.value == sel.sTeam; });
             sTeam.value = obj;
-            userteam = user.sTeam;
+            userteam = sel.sTeam;
             refTeam.value.sTeam = userteam;
         } else {
             sTeam.value = teamList.value.find((o) => { return o.value == userteam; });  
@@ -101,7 +104,7 @@ onMounted(async () => {
         //console.log('sTeam.value:', sTeam.value);
         //sTeam.value = _.find(teamList.value, (o) => { return o.value == userteam; });
         //sTeam.value = teamList.value.find((o) => { return o.value == userteam; });
-        //console.log('user.sTeam: ', user.sTeam);
+        //console.log('sel.sTeam: ', sel.sTeam);
 
         let group = await groupSvc.getBy({ ofteam: userteam });
         //let group = await groupSvc.getBy({ ofteam: userteam });
@@ -111,53 +114,53 @@ onMounted(async () => {
         //console.log(groupList.value);
         //console.log('my team:', team);
 
-        if (user.sGroup == '') {
+        if (sel.sGroup == '') {
             refGroup.value.sGroup = 'ME';
-            user.sGroup = 'ME';
+            sel.sGroup = 'ME';
             refPstate.value.getJobList({ employeeno: user.employeeno });
             refPlist.value.getJobList({ employeeno: user.employeeno });
         } else {
-            if (user.sGroup == 'ME') {
+            if (sel.sGroup == 'ME') {
                 refGroup.value.sGroup = 'ME';
                 refPstate.value.getJobList({ employeeno: user.employeeno });
                 refPlist.value.getJobList({ employeeno: user.employeeno });
             } else {
-                //if (user.sMember.length > 4) {
-                refGroup.value.sGroup = user.sGroup;
+                //if (sel.sMember.length > 4) {
+                refGroup.value.sGroup = sel.sGroup;
                 const regex = /^\d{6}$/;
-                if (regex.test(user.sMember)) {
-                    refPstate.value.getJobList({ employeeno: user.sMember });
-                    refPlist.value.getJobList({ employeeno: user.sMember });
+                if (regex.test(sel.sMember)) {
+                    refPstate.value.getJobList({ employeeno: sel.sMember });
+                    refPlist.value.getJobList({ employeeno: sel.sMember });
                 } else {
-                    refPstate.value.getJobList({ ofgroup1: user.sGroup });
-                    refPlist.value.getJobList({ ofgroup1: user.sGroup });
+                    refPstate.value.getJobList({ ofgroup1: sel.sGroup });
+                    refPlist.value.getJobList({ ofgroup1: sel.sGroup });
                 }
-                //refGroup.value.sGroup = user.sGroup;
-                //refPstate.value.getJobList({ ofgroup1: user.sGroup });
-                //refPlist.value.getJobList({ ofgroup1: user.sGroup });
+                //refGroup.value.sGroup = sel.sGroup;
+                //refPstate.value.getJobList({ ofgroup1: sel.sGroup });
+                //refPlist.value.getJobList({ ofgroup1: sel.sGroup });
                 //console.log(user);
             }
         }
 
-        //console.log('current: ', user.sMember);
+        //console.log('current: ', sel.sMember);
 
-        await getTeamMember(user.sGroup);
+        await getTeamMember(sel.sGroup);
 
         //sOption.value = teamMember.value[0];
         //refMember.value.sMember = memberList.value[0];
 
         
         //console.log(teamMember.value);
-        //console.log('user.sMember:', user.sMember);
-        //console.log(teamMember.value.includes(user.sMember));
-        //let obj = _.find(teamMember.value, (o) => { return o.value == user.sMember; });
+        //console.log('sel.sMember:', sel.sMember);
+        //console.log(teamMember.value.includes(sel.sMember));
+        //let obj = _.find(teamMember.value, (o) => { return o.value == sel.sMember; });
         //console.log('find obj:', obj);
         //sOption.value = obj;
         
-        if (_.find(memberList.value, (o) => { return o.value == user.sMember; })) {
-            //sOption.value = user.sMember;
-            refMember.value.sMember = user.sMember;
-            //console.log('include:', user.sMember);
+        if (_.find(memberList.value, (o) => { return o.value == sel.sMember; })) {
+            //sOption.value = sel.sMember;
+            refMember.value.sMember = sel.sMember;
+            //console.log('include:', sel.sMember);
         } else {
             //sOption.value = teamMember.value[0];
             refMember.value.sMember = memberList.value[0].value;
@@ -207,9 +210,8 @@ const onTeamChange = async (value) => {
     //hist.steam = sTeam.value;
     //util.saveObj('hist', hist);
     
-    user.sTeam = value;
-    util.saveObj('user', user);  
-    
+    sel.sTeam = value;
+
     //console.log(sTeam.value[0].value);
     onGroupChange(value)
 };
@@ -235,9 +237,8 @@ const onGroupChange = async (value) => {
         refMember.value.sMember = value;
     }
 
-    user.sGroup = value; 
-    util.saveObj('user', user);
-    //console.log('sGroup change:', user.sGroup);
+    sel.sGroup = value; 
+    //console.log('sGroup change:', sel.sGroup);
 };
 
 const onMemberChange = async (value) => {
@@ -252,16 +253,13 @@ const onMemberChange = async (value) => {
         refPlist.value.getJobList({ ofgroup1: value });
     }
     //refMember.value.sMember = value;
-    user.sMember = value;
-    util.saveObj('user', user);
-    //console.log('member change, user.sMember: ', user.sMember);
+    sel.sMember = value;
+    //console.log('member change, sel.sMember: ', sel.sMember);
     //console.log('member change, sOption.value: ', sOption.value);
 };
 
 const onListTypeChange = () => {
-    hist.listtype = sListType.value;
-    util.saveObj('hist', hist);
-    //console.log('hist:', hist);
+    sel.hist.listtype = sListType.value;
 };
 
 const showDialog = () => {

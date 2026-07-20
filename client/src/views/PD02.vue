@@ -2,12 +2,16 @@
 import { ref, onMounted } from 'vue';
 import ContentSvc from '@/service/contents.service.js';
 import { trimJSON, loadObj } from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 import { ElMessage } from 'element-plus';
 
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 const contentSvc = new ContentSvc();
 const c = ref();
 const sTab = ref('content');
@@ -21,12 +25,12 @@ onMounted(async () => {
 
 const getContent = async () => {
     await contentSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             //console.log(data);
             if (data.length < 1) {
                 c.value = {
-                    jobno: user.sJobno, 
+                    jobno: sel.sJobno, 
                     workcontent: '', 
                     basicby: '', 
                     hardwareby: '', 
@@ -47,9 +51,9 @@ const getContent = async () => {
 
 const updateContent = async () => {
 
-    let data = await contentSvc.getBy({ jobno: user.sJobno });
+    let data = await contentSvc.getBy({ jobno: sel.sJobno });
     if (data.length < 1) {
-        await contentSvc.create({ jobno: user.sJobno });
+        await contentSvc.create({ jobno: sel.sJobno });
     }
 
     await contentSvc

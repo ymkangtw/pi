@@ -4,6 +4,7 @@ import draggable from 'vuedraggable';
 import JoblistSvc from '@/service/joblist.service.js';
 import BasicSvc from '@/service/basic.service.js';
 import { trimJSON, saveObj, loadObj, fv, pv } from '@/util/utils.js';
+import { useSelectionStore } from '@/stores/selection.js';
 import { useRouter } from 'vue-router';
 import { ccode } from '@/assets/colorcode.js';
 import _ from 'lodash';
@@ -28,8 +29,7 @@ const props = defineProps({
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = loadObj('user');
-var hist = loadObj('hist');
+const sel = useSelectionStore();
 
 const router = useRouter();
 const joblistSvc = new JoblistSvc();
@@ -138,16 +138,12 @@ const OnChange = (event) => {
 };
 
 const OnPrjClick = (jobno) => {
-    user.sGroup = props.group.sGroup;
-    user.sTeam = props.team.sTeam;
-    user.sMember = props.member.sMember;
-    user.sJobno = jobno;
+    sel.sGroup = props.group.sGroup;
+    sel.sTeam = props.team.sTeam;
+    sel.sMember = props.member.sMember;
+    sel.sJobno = jobno;
 
-    //user.sSubjobno = 0;
-    saveObj('user', user);
-    //console.log(user);
-    //router.push('/PM02');
-    _.isEmpty(hist.link) ? router.push('/PM02/PD01') : router.push(hist.link);
+    _.isEmpty(sel.hist.link) ? router.push('/PM02/PD01') : router.push(sel.hist.link);
     //prjoption == '' ? router.push('/PM02/PD01') : router.push(prjoption);
 };
 

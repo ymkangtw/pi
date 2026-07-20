@@ -1,7 +1,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import EmployeeSvc from '@/service/employee.service.js';
-import { trimJSON, saveObj, delObj, clearAll } from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 import { useRouter } from 'vue-router';
 import { ElNotification } from 'element-plus';
 import { useField } from 'vee-validate';
@@ -11,9 +12,9 @@ import { useField } from 'vee-validate';
 //--------------------------------
 const employeeSvc = new EmployeeSvc();
 const router = useRouter();
+const userStore = useUserStore();
+const sel = useSelectionStore();
 
-const user = ref();
-const hist = ref();
 //const employeeno = ref();
 const password = ref();
 
@@ -22,8 +23,7 @@ const password = ref();
 //--------------------------------
 
 onMounted(() => {
-    //console.log('pview user:', user);
-    console.log(user.value);
+
 });
 
 const validateField = (value) => {
@@ -43,17 +43,9 @@ const Login = () => {
         .getBy({ employeeno: employeeno.value })
         .then((data) => {
             if (data.length > 0) {
-                user.value = data[0];
-                user.value.sTeam = '';
-                user.value.sGroup = '';
-                user.value.sMember = '';
-                user.value.sJobno = '';
-                user.value.sSubjobno = '';
-                hist.value = { link: '', listtype: ''};
-
-                saveObj('user', user.value);
-                saveObj('hist', hist.value);
-                //console.log('login: ', user.value);
+                userStore.login(data[0]);
+                sel.reset();
+                //console.log('login: ', userStore.identity);
                 router
                     .push({ path: '/' })
                     .then(() => {
@@ -62,7 +54,7 @@ const Login = () => {
 
             } else {
                 ElNotification({ title: '登入失敗', message: '請重新登入', type: 'error', duration: 1500 });
-                delObj('user');
+                userStore.logout();
             }
         });
     }

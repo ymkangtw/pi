@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router';
 import _ from 'lodash';
 import * as dayjs from 'dayjs';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 
 //--------------------------------
@@ -23,7 +24,8 @@ const props = defineProps({
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
+const userStore = useUserStore();
+var user = userStore.identity;
 const router = useRouter();
 
 const DlgVisible = ref();

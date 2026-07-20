@@ -8,6 +8,8 @@ import FactorycodeService from '@/service/factorycode.service.js';
 
 import * as dayjs from 'dayjs';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 import { ElMessage } from 'element-plus';
 
 //--------------------------------
@@ -20,7 +22,9 @@ const props = defineProps({
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 const router = useRouter();
 
 const basicSvc = new BasicSvc();
@@ -63,16 +67,16 @@ const cOptions = ref([
 // Local Function
 //--------------------------------
 onMounted(async () => {
-    b.value = await basicSvc.getBy({ jobno: user.sJobno });
+    b.value = await basicSvc.getBy({ jobno: sel.sJobno });
     //console.log('b:', b.value);
     
-    dwgno.value = await drawingnoSvc.getBy({ jobno: user.sJobno });
+    dwgno.value = await drawingnoSvc.getBy({ jobno: sel.sJobno });
     fcode.value = await factorycodeSvc.getAll();
     for (let item of fcode.value) {
         fOptions.value.push({ label: `${item.fcode}, ${item.name}`, value: item.fcode});
     }
 
-    newDwgno.value.jobno = user.sJobno;
+    newDwgno.value.jobno = sel.sJobno;
     newDwgno.value.employeeno = user.employeeno;
     newDwgno.value.drawingtitle = b.value[0].jobname;
 
@@ -122,7 +126,7 @@ const addNewDrawingno = async () => {
     let error = 0;
     await drawingnoSvc.create(newDwgno.value).then((data) => { data == 'created' ? error = error : error = error + 1 });
     error == 0 ? ElMessage({ message: '新增成功', type: 'success' }) : ElMessage({ message: '新增失敗', type: 'error' });
-    dwgno.value = await drawingnoSvc.getBy({ jobno: user.sJobno });
+    dwgno.value = await drawingnoSvc.getBy({ jobno: sel.sJobno });
 };
 
 const handleDelete = async (value) => {
@@ -135,7 +139,7 @@ const handleDelete = async (value) => {
     let error = 0;
     await drawingnoSvc.remove(delObj).then((data) => { data == 'removed' ? error = error : error = error + 1 });
     error == 0 ? ElMessage({ message: '刪除成功', type: 'success' }) : ElMessage({ message: '刪除失敗', type: 'error' });
-    dwgno.value = await drawingnoSvc.getBy({ jobno: user.sJobno });
+    dwgno.value = await drawingnoSvc.getBy({ jobno: sel.sJobno });
 }
 
 //--------------------------------

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import BasicSvc from '@/service/basic.service.js';
 import { trimJSON, saveObj, loadObj } from '@/util/utils.js';
+import { useSelectionStore } from '@/stores/selection.js';
 import { useRouter } from 'vue-router';
 import _ from 'lodash';
 import { ccode } from '@/assets/colorcode.js';
@@ -9,8 +10,7 @@ import { ccode } from '@/assets/colorcode.js';
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = loadObj('user');
-var hist = loadObj('hist');
+const sel = useSelectionStore();
 
 const router = useRouter();
 const basicSvc = new BasicSvc();
@@ -39,11 +39,11 @@ onMounted(async () => {
     //console.log(b.value.jobno);
     //await chartBudget.value.renderChart(b.value);
     
-    if (_.isEmpty(hist)) {
+    if (_.isEmpty(sel.hist)) {
         options.value[0].color = `${ccode.blue2}`;
     } else {
         for(let obj of options.value) {
-            obj.link == hist.link ? obj.color = `${ccode.blue2}` : obj.color = `${ccode.gray1}`;
+            obj.link == sel.hist.link ? obj.color = `${ccode.blue2}` : obj.color = `${ccode.gray1}`;
         }
     }
     //router.push(prjoption);
@@ -53,11 +53,11 @@ onMounted(async () => {
 const getBasic = async () => {
 
     await basicSvc
-    .getBy({jobno: user.sJobno})
+    .getBy({jobno: sel.sJobno})
     .then((data) => {
         b.value = trimJSON(data[0]);
     });
-    //b.value = await basicSvc.getBy({jobno: user.sJobno});
+    //b.value = await basicSvc.getBy({jobno: sel.sJobno});
 };
 
 const OnOptionClick = (item) => {
@@ -67,8 +67,7 @@ const OnOptionClick = (item) => {
         obj.color = `${ccode.gray1}`;
     } 
     item.color = `${ccode.blue2}`;
-    hist.link = item.link;
-    saveObj('hist', hist);
+    sel.hist.link = item.link;
     //saveObj('prjoption', item.link);
     //console.log(item.link);
 };
@@ -79,8 +78,7 @@ const OnOptionClick = (item) => {
 //};
 
 const OnBackClick = () => {
-    user.sSubjobno = 0;
-    saveObj('user', user);
+    sel.sSubjobno = 0;
     router.push('/PM01');
     //router.back();
     //previousPage();

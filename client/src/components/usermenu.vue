@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import * as util from '@/util/utils.js';
 
 //--------------------------------
 // Component Property (Input)
@@ -31,8 +30,6 @@ defineExpose({
 //--------------------------------
 
 const router = useRouter();
-const user = ref(null);     // 登入使用者
-user.value = util.loadObj('user');
 
 //--------------------------------
 // Local Function

@@ -5,15 +5,17 @@ import BasicSvc from '@/service/basic.service.js';
 import CommonSvc from '@/service/common.service.js';
 import _ from 'lodash';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 
 //--------------------------------
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
-//var prjoption = util.loadObj('prjoption');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 
 const basicSvc = new BasicSvc();
 const commonSvc = new CommonSvc();
@@ -69,13 +71,12 @@ const onQuery = async () => {
 
 const handleClick = (value) => {
     //console.log(value.row.jobno);
-    user.sJobno = value.row.jobno;
-    util.saveObj('user', user);
+    sel.sJobno = value.row.jobno;
     //console.log(user);
     //router.push('/PM02');
     //prjoption == '' ? router.push('/PM02/PD01') : router.push(prjoption);
     //_.isEmpty(prjoption) ? router.push('/PM02/PD01') : router.push(prjoption);  
-    _.isEmpty(hist.link) ? router.push('/PM02/PD01') : router.push(hist.link);
+    _.isEmpty(sel.hist.link) ? router.push('/PM02/PD01') : router.push(sel.hist.link);
 };
 
 </script>

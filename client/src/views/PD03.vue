@@ -8,11 +8,15 @@ import dayjs from 'dayjs';
 import { ElMessage } from 'element-plus';
 import { ccode } from '@/assets/colorcode.js';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 const date = dayjs(new Date()).format('YYYY-MM-DD');
 
 const leaderSvc = new LeaderSvc();
@@ -55,7 +59,7 @@ const weightTotal = computed(() => {
 
 const getLeader = async () => {
     await leaderSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             l.value = data;
         });
@@ -64,7 +68,7 @@ const getLeader = async () => {
 const addLeader = async () => {
     const idx = e.value.findIndex(obj => { return obj.employeeno == newl.value.employeeno });
     let newValue = {
-        jobno: user.sJobno,
+        jobno: sel.sJobno,
         employeeno: newl.value.employeeno,
         begindate: newl.value.begindate != "" ? newl.value.begindate : date
     };
@@ -81,7 +85,7 @@ const addLeader = async () => {
 const removeLeader = async (employeeno) => {
     const idx = l.value.findIndex(obj => { return obj.employeeno == employeeno });
     let removeValue = {
-        jobno: user.sJobno,
+        jobno: sel.sJobno,
         employeeno: employeeno
     };
     await leaderSvc
@@ -118,7 +122,7 @@ const updateLeader = async (employeeno) => {
 
 const getMember = async () => {
     await memberSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             m.value = data;
         });
@@ -136,7 +140,7 @@ const addMember = async () => {
     //const lastm = m.value.reduce((p, c) => p.subjobno > c.subjobno ? p : c);
     //const subjobno = lastm.subjobno;
     let newValue = {
-        jobno: user.sJobno,
+        jobno: sel.sJobno,
         subjobno: lastNum,
         employeeno: newm.value.employeeno,
         begindate: newm.value.begindate != "" ? newm.value.begindate : date,
@@ -157,7 +161,7 @@ const addMember = async () => {
 const removeMember = async (employeeno) => {
     const idx = m.value.findIndex(obj => { return obj.employeeno == employeeno });
     let removeValue = {
-        jobno: user.sJobno,
+        jobno: sel.sJobno,
         employeeno: employeeno
     };
     await memberSvc

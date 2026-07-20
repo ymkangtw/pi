@@ -11,14 +11,17 @@ import ChartJobtype from '@/components/chartjobtype.vue';
 import * as dayjs from 'dayjs';
 import _ from 'lodash';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 
 //--------------------------------
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 
 const chartjobtype = ref();
 
@@ -83,9 +86,8 @@ const onChartJobtypeClick = async (data) => {
 
 const handleClick = (value) => {
     //console.log(value.row.jobno);
-    user.sJobno = value.row.jobno;
-    util.saveObj('user', user);
-    _.isEmpty(hist.link) ? router.push('/PM02/PD01') : router.push(hist.link);    
+    sel.sJobno = value.row.jobno;
+    _.isEmpty(sel.hist.link) ? router.push('/PM02/PD01') : router.push(sel.hist.link);    
 };
 
 </script>

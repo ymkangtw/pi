@@ -1,7 +1,8 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { trimJSON, saveObj, loadObj, delObj, clearAll } from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 //--------------------------------
 // Component Property (Input)
@@ -31,8 +32,9 @@ defineExpose({
 //--------------------------------
 
 const router = useRouter();
-const user = ref(null);     // 登入使用者
-user.value = loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+const user = computed(() => userStore.identity);     // 登入使用者
 
 //--------------------------------
 // Local Function
@@ -43,9 +45,8 @@ onMounted(() => {
 });
 
 const Logout = () => {
-    user.value = null;
-    delObj('user');
-    //delObj('hist');
+    userStore.logout();
+    sel.reset();
     router.push('/');
 };
 

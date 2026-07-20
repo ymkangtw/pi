@@ -16,6 +16,8 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 import { ElMessage } from 'element-plus';
 import { ccode } from '@/assets/colorcode.js';
@@ -26,7 +28,9 @@ dayjs.extend(isBetween, isSameOrBefore, isSameOrAfter);
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 const currDate = dayjs(new Date()).format('YYYY-MM-DD');
 
 // Project Member
@@ -96,7 +100,7 @@ onMounted(async () => {
     monthrange.value = [mstart, mend];
     //console.log(basedate);
 
-    OnMemberClick(user.sJobno, sSubjobno.value);
+    OnMemberClick(sel.sJobno, sSubjobno.value);
     //let weekData = genWeeklyDate('2019-11-13', '2023-06-14');
     //console.log(weekData);
 });
@@ -139,17 +143,17 @@ const getWeekStartEnd = (currentDate) => {
 const getMember = async () => {
     /*
     await memberSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             m.value = data;
         });
     */
-    m.value = await memberSvc.getBy({ jobno: user.sJobno });
+    m.value = await memberSvc.getBy({ jobno: sel.sJobno });
 };
 
 const getDefMember = () => {
-    if (user.sSubjobno > 0) {
-        sSubjobno.value = user.sSubjobno;
+    if (sel.sSubjobno > 0) {
+        sSubjobno.value = sel.sSubjobno;
     } else {
         const sm = m.value.find(obj => { return obj.employeeno == user.employeeno });
         if (sm == undefined) {
@@ -165,8 +169,7 @@ const OnMemberClick = async (jobno, subjobno) => {
     // get weekly report
     //console.log(getWeekStartEnd('2023-08-03'));
     sSubjobno.value = subjobno;
-    user.sSubjobno = subjobno;
-    util.saveObj('user', user);
+    sel.sSubjobno = subjobno;
 
     l.value = await leaderSvc.getBy({ jobno: jobno });
     let ofgroup = '';
@@ -456,7 +459,7 @@ const importWeeklyReportPrj = async () => {
     //let mstart = dayjs(basedate).startOf('month').format('YYYY-MM-DD');
     //let mend = dayjs(basedate).endOf('month').format('YYYY-MM-DD');
     //console.log(weekrange.value);
-    let data = await weeklyreportbyprjSvc.getWeekworkByPrj({ jobno: user.sJobno, inputdate1: weekrange.value[0], inputdate2: weekrange.value[1] });
+    let data = await weeklyreportbyprjSvc.getWeekworkByPrj({ jobno: sel.sJobno, inputdate1: weekrange.value[0], inputdate2: weekrange.value[1] });
     //console.log('data: ', data);
 
     let content = '';
@@ -465,7 +468,7 @@ const importWeeklyReportPrj = async () => {
     }
     wrptprj.value[0].weekwork = content;
 
-    //console.log('user.sJobno: ', user.sJobno);
+    //console.log('sel.sJobno: ', sel.sJobno);
     //console.log('inputdate1: ', weekrange.value[0]);
     //console.log('inputdate2: ', weekrange.value[1]);
 
@@ -481,7 +484,7 @@ const importWeeklyReportPrj = async () => {
 };
 
 const importMonthReportPrj = async () => {
-    let data = await monthreportbyprjSvc.getMonthworkByPrj({ jobno: user.sJobno, inputdate1: monthrange.value[0], inputdate2: monthrange.value[1] });
+    let data = await monthreportbyprjSvc.getMonthworkByPrj({ jobno: sel.sJobno, inputdate1: monthrange.value[0], inputdate2: monthrange.value[1] });
     //console.log('data: ', data);
 
     let content = '';
@@ -499,11 +502,11 @@ const importMonthReportPrj = async () => {
                 <span>
                     <el-radio-group v-model="sSubjobno" class="ma8">
                         <el-radio-button v-for="item in m" :key="item.employeeno" :label="item.subjobno" :value="item.subjobno"
-                            @change="OnMemberClick(user.sJobno, item.subjobno)">
+                            @change="OnMemberClick(sel.sJobno, item.subjobno)">
                             {{ item.name }}
                         </el-radio-button>
 
-                        <el-radio-button key="all" label="all" value="all" @change="OnMemberClick(user.sJobno, 'all')">
+                        <el-radio-button key="all" label="all" value="all" @change="OnMemberClick(sel.sJobno, 'all')">
                             全案     
                         </el-radio-button>
                        

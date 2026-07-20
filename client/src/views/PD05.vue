@@ -23,6 +23,8 @@ import { jsPDF } from "jspdf";
 //import { saveObj, loadObj, rNum, fv, pv, StrToInt } from '@/util/utils.js';
 //import { fv, pv } from '@/util/utils.js';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 
 import _ from 'lodash';
@@ -38,7 +40,9 @@ const pv = util.pv;
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = util.loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 
 //const doc = new jsPDF();
 /*
@@ -280,13 +284,13 @@ onMounted(async () => {
     await getDefMember();
     await getTaskCategory();    // all Task Category
     await getTask();            // akk Task
-    await OnMemberClick(user.sJobno, sSubjobno.value);
+    await OnMemberClick(sel.sJobno, sSubjobno.value);
 
 });
 
 const getBasic = async () => {
     b.value = await basicSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             return data[0];
         });
@@ -296,18 +300,18 @@ const getBasic = async () => {
 const getMember = async () => {
     /*
     await memberSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             m.value = data;
         });
     */
-    m.value = await memberSvc.getBy({ jobno: user.sJobno });
+    m.value = await memberSvc.getBy({ jobno: sel.sJobno });
     //m.value.push({subjobno: 'all', employeeno: 'all', name: '全案'});
 };
 
 const getDefMember = () => {
-    if (user.sSubjobno > 0) {
-        sSubjobno.value = user.sSubjobno;
+    if (sel.sSubjobno > 0) {
+        sSubjobno.value = sel.sSubjobno;
     } else {
         const sm = m.value.find(obj => { return obj.employeeno == user.employeeno });
         if (sm == undefined) {
@@ -330,15 +334,14 @@ const getTask = async () => {
 
 const OnMemberClick = async (jobno, subjobno) => {
     //console.log(jobno, subjobno);
-    //YM.value = await monthbyitemSvc.getYearMonth({ jobno: user.sJobno, subjobno: sSubjobno.value });
+    //YM.value = await monthbyitemSvc.getYearMonth({ jobno: sel.sJobno, subjobno: sSubjobno.value });
     sSubjobno.value = subjobno;
-    user.sSubjobno = subjobno;
-    util.saveObj('user', user);
+    sel.sSubjobno = subjobno;
 
     if (typeof subjobno == 'number') {
         YM.value = await monthbyitemSvc.getYearMonth({ jobno: jobno, subjobno: subjobno });
     } else {
-        YM.value = await monthbyitemSvc.getYearMonth({ jobno: user.sJobno });
+        YM.value = await monthbyitemSvc.getYearMonth({ jobno: sel.sJobno });
     }
     //console.log(YM.value);
     YMOptions.value = [];
@@ -382,7 +385,7 @@ const OnMemberClick = async (jobno, subjobno) => {
 /*
 const OnAllClick = async () => {
     //console.log('all');
-    YM.value = await monthbyitemSvc.getYearMonth({ jobno: user.sJobno });
+    YM.value = await monthbyitemSvc.getYearMonth({ jobno: sel.sJobno });
     YMOptions.value = [];
     for (let it of YM.value) {
         YMOptions.value.push({ label: it.yearmonth, value: it.yearmonth });
@@ -397,7 +400,7 @@ const OnAllClick = async () => {
     sYM.value = YMOptions.value[0].value;
 
     //console.log(m.value);
-    await _getMonthItem(user.sJobno);
+    await _getMonthItem(sel.sJobno);
     sCategory.value = 'SUMMARY';
     //getSummary();
     //console.log(sSubjobno.value);
@@ -418,8 +421,8 @@ const OnMonthItemDlgClick = (item) => {
 
 const OnYMChange = async () => {
     //console.log(sYM.value);
-    await getMonthItem(user.sJobno, sSubjobno.value);
-    await getMptotal(user.sJobno, sYM.value);
+    await getMonthItem(sel.sJobno, sSubjobno.value);
+    await getMptotal(sel.sJobno, sYM.value);
     //getSummary();
 };
 
@@ -984,8 +987,8 @@ const getMonthItem = async (jobno, subjobno) => {
     //console.log('tcr:', tcr.value);
     //console.log('ptc:', ptc.value);
 
-    //orders.value = await ordersSvc.getBy({ jobno: user.sJobno, subjobno: sSubjobno.value });
-    //orderitems.value = await orderitemsSvc.getBy({ jobno: user.sJobno, subjobno: sSubjobno.value });
+    //orders.value = await ordersSvc.getBy({ jobno: sel.sJobno, subjobno: sSubjobno.value });
+    //orderitems.value = await orderitemsSvc.getBy({ jobno: sel.sJobno, subjobno: sSubjobno.value });
     //console.log(orders.value);
 
 
@@ -1245,8 +1248,8 @@ const updateMonthItem = async (item) => {
     
     //let updateObj = _.map(newmonthbyproject, o => { return { ...o } });
     
-    //console.log({ jobno: user.sJobno, subjobno: sSubjobno.value, yearmonth: sYM.value });
-    let data = await monthlyworkSvc.getBy({ jobno: user.sJobno, subjobno: sSubjobno.value, yearmonth: sYM.value });
+    //console.log({ jobno: sel.sJobno, subjobno: sSubjobno.value, yearmonth: sYM.value });
+    let data = await monthlyworkSvc.getBy({ jobno: sel.sJobno, subjobno: sSubjobno.value, yearmonth: sYM.value });
     let updateObj;
     if (data.length > 0) {
         //updateObj = _.map(newmonthbyproject, o => { return { ...o } });
@@ -1378,7 +1381,7 @@ const updateMonthItem = async (item) => {
 
     //console.log('summary: ', summary);
     if ( _.isEmpty(updateObj.jobno) ) {
-        updateObj.jobno = user.sJobno;
+        updateObj.jobno = sel.sJobno;
         updateObj.subjobno = sSubjobno.value;
         updateObj.yearmonth = sYM.value;
         //monthlyworkSvc.create(up);
@@ -1390,7 +1393,7 @@ const updateMonthItem = async (item) => {
     //console.log('updateObj:', updateObj);
 
     error == 0 ? ElMessage({ message: '更新成功', type: 'success' }) : ElMessage({ message: '更新失敗', type: 'error' });
-    await getMonthItem(user.sJobno, sSubjobno.value);
+    await getMonthItem(sel.sJobno, sSubjobno.value);
 };
 
 const getPurchaseTask = async () => {
@@ -1539,7 +1542,7 @@ const removeOrders = async () => {
             await ordersSvc.remove(it).then((data) => { data == 'removed' ? error = error : error = error + 1 });
         }
         error == 0 ? ElMessage({ message: '刪除成功', type: 'success' }) : ElMessage({ message: '刪除失敗', type: 'error' });
-        await getOrders(user.sJobno, sSubjobno.value);
+        await getOrders(sel.sJobno, sSubjobno.value);
         //sorder.value = {};  // clear selected order
         currentOrder.value = {};
     }
@@ -1562,15 +1565,15 @@ const ordersClick = (row, column, event) => {
     sorderitems.value = [];
 
     for (let it of orderitems.value) {
-        if (it.jobno == user.sJobno && it.subjobno == sSubjobno.value && it.serialno == currentOrder.value.item) {
+        if (it.jobno == sel.sJobno && it.subjobno == sSubjobno.value && it.serialno == currentOrder.value.item) {
             sorderitems.value.push(it);
         }
     }
 
     //_.filter is slower than for of loop
-    //sorderitems.value = _.filter(orderitems.value, (o) => { return o.jobno == user.sJobno && o.subjobno == sSubjobno.value && o.serialno == currentOrder.value.item; });
+    //sorderitems.value = _.filter(orderitems.value, (o) => { return o.jobno == sel.sJobno && o.subjobno == sSubjobno.value && o.serialno == currentOrder.value.item; });
     //sorderitems.value = _.filter(orderitems.value, (o) => {
-    //    return o.jobno == user.sJobno && o.subjobno == sSubjobno.value && o.serialno == sorder.value.item;
+    //    return o.jobno == sel.sJobno && o.subjobno == sSubjobno.value && o.serialno == sorder.value.item;
     //});
     //console.log(orderitems.value);
 
@@ -1654,7 +1657,7 @@ const addOrderitems = async () => {
     //console.log(currentOrder.value, orders.value);
     //console.log('neworderitem: ', neworderitem.value);
     if (!(_.isEmpty(currentOrder.value) || _.isEmpty(orders.value))) {
-        neworderitem.value.jobno = user.sJobno;
+        neworderitem.value.jobno = sel.sJobno;
         neworderitem.value.subjobno = sSubjobno.value;
         neworderitem.value.serialno = currentOrder.value.item;
         neworderitem.value.purchase_esti_issue_date = neworderitem.value.purchase_esti_issue_date != "" ? neworderitem.value.purchase_esti_issue_date : pdate;
@@ -1675,7 +1678,7 @@ const addOrderitems = async () => {
         await orderitemsSvc.create(neworderitem.value).then((data) => { data == 'created' ? error = error : error = error + 1 });
         error == 0 ? ElMessage({ message: '新增成功', type: 'success' }) : ElMessage({ message: '新增失敗', type: 'error' });
         //sorderitems.value.push(neworderitem.value);
-        await getOrderItems(user.sJobno, sSubjobno.value);
+        await getOrderItems(sel.sJobno, sSubjobno.value);
         ordersClick();       
     }
 
@@ -1789,7 +1792,7 @@ const removeOrderitems = async () => {
             await orderitemsSvc.remove(it).then((data) => { data == 'removed' ? error = error : error = error + 1 });
         }
         error == 0 ? ElMessage({ message: '刪除成功', type: 'success' }) : ElMessage({ message: '刪除失敗', type: 'error' });
-        await getOrderItems(user.sJobno, sSubjobno.value);
+        await getOrderItems(sel.sJobno, sSubjobno.value);
     }
 
 };
@@ -2708,7 +2711,7 @@ const test = (item) => {
                             {{ item.name }}
                         </el-radio-button>
 
-                        <el-radio-button key="all" label="all" value="all" @change="OnMemberClick(user.sJobno, 'all')">
+                        <el-radio-button key="all" label="all" value="all" @change="OnMemberClick(sel.sJobno, 'all')">
                             全案     
                         </el-radio-button>
 
@@ -2728,21 +2731,21 @@ const test = (item) => {
                 </span>
             <!--
                 <span>
-                    <el-button type="primary" class="value ma8" @click="orderreportExport(user.sJobno, sSubjobno)">匯出請購明細</el-button>
+                    <el-button type="primary" class="value ma8" @click="orderreportExport(sel.sJobno, sSubjobno)">匯出請購明細</el-button>
                 </span>
             -->
                 <span>
                     <!--
-                    <el-button v-if="sSubjobno != 'all'" type="primary" class="value ma8" @click="printMonthWork(user.sJobno, sSubjobno)">工程月報</el-button>
+                    <el-button v-if="sSubjobno != 'all'" type="primary" class="value ma8" @click="printMonthWork(sel.sJobno, sSubjobno)">工程月報</el-button>
                     -->
                     <el-button v-if="sSubjobno != 'all'" type="primary" class="value ma8" @click="showDialogMonthwork=true">工程月報</el-button>
 
                 </span>
                 <span>
-                    <el-button v-if="sSubjobno == 'all'" type="primary" class="value ma8" @click="printMonthWorkTotal(user.sJobno, sSubjobno)">工程進度管制表</el-button>
+                    <el-button v-if="sSubjobno == 'all'" type="primary" class="value ma8" @click="printMonthWorkTotal(sel.sJobno, sSubjobno)">工程進度管制表</el-button>
                 </span>
                 <span>
-                    <el-button v-if="sSubjobno == 'all'" type="primary" class="value ma8" @click="printProjectWork(user.sJobno)">專案報告</el-button>
+                    <el-button v-if="sSubjobno == 'all'" type="primary" class="value ma8" @click="printProjectWork(sel.sJobno)">專案報告</el-button>
                 </span>
 
             </el-col>
@@ -2898,7 +2901,7 @@ const test = (item) => {
                                 </el-col>
                                 <el-col :span="12" class="fend">
                                     <span class="ma4">
-                                        <el-button type="primary" class="ma2" @click="saveMptotal(user.sJobno)">
+                                        <el-button type="primary" class="ma2" @click="saveMptotal(sel.sJobno)">
                                             儲存
                                         </el-button>
                                     </span>
@@ -2931,7 +2934,7 @@ const test = (item) => {
                                 </el-col>
                                 <el-col :span="12" class="fend">
                                     <span class="ma4">
-                                        <el-button type="primary" class="ma2" @click="saveMptotal(user.sJobno)">
+                                        <el-button type="primary" class="ma2" @click="saveMptotal(sel.sJobno)">
                                             儲存
                                         </el-button>
                                     </span>
@@ -2965,7 +2968,7 @@ const test = (item) => {
                                         </span>
                                         <span class="ma4"></span>
                                         <span v-if="item.jobtype == 'P'" class="ma4">
-                                            <el-button type="primary" @click="getOrders(user.sJobno, sSubjobno);getOrderItems(user.sJobno, sSubjobno); updateOrdersDlg = true;">請購管理</el-button>
+                                            <el-button type="primary" @click="getOrders(sel.sJobno, sSubjobno);getOrderItems(sel.sJobno, sSubjobno); updateOrdersDlg = true;">請購管理</el-button>
                                         </span>
                                     </div>
                                 </el-row>
@@ -3038,7 +3041,7 @@ const test = (item) => {
             <template #footer>
                 <span>
                     <el-button @click="showDialogMonthwork = false">取消</el-button>
-                    <el-button type="primary" @click="printMonthWork(user.sJobno, sSubjobno);showDialogMonthwork = false;">
+                    <el-button type="primary" @click="printMonthWork(sel.sJobno, sSubjobno);showDialogMonthwork = false;">
                         確定
                     </el-button>
                 </span>
@@ -3287,7 +3290,7 @@ const test = (item) => {
                     </el-row>
                     <hr />
                     <el-row>
-                        <el-button type="primary" class="ma2" @click=" addOrders(user.sJobno, sSubjobno);addOrdersDlg = false; ">
+                        <el-button type="primary" class="ma2" @click=" addOrders(sel.sJobno, sSubjobno);addOrdersDlg = false; ">
                             確定
                         </el-button>
                         <el-button type="primary" class="ma2" @click=" addOrdersDlg = false; ">
@@ -3444,7 +3447,7 @@ const test = (item) => {
                     <div>請購案</div>                       
                 </span>
                 <span>
-                    <el-button type="primary" class="ma2" @click=" updateOrdersDlg = false; getMonthItem(user.sJobno, sSubjobno);">
+                    <el-button type="primary" class="ma2" @click=" updateOrdersDlg = false; getMonthItem(sel.sJobno, sSubjobno);">
                         關閉
                     </el-button>
                 </span>

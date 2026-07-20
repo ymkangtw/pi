@@ -4,13 +4,16 @@ import { useRouter } from 'vue-router';
 import OrderitemsSvc from '@/service/orderitems.service.js';
 import _ from 'lodash';
 import * as util from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 //--------------------------------
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-//var prjoption = util.loadObj('prjoption');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 
 const orderitemsSvc = new OrderitemsSvc();
 const orderitems = ref();
@@ -34,8 +37,7 @@ const onQuery = async () => {
 
 const handleClick = (value) => {
     //console.log(value.row.jobno);
-    user.sJobno = value.row.jobno;
-    util.saveObj('user', user);
+    sel.sJobno = value.row.jobno;
     //console.log(user);
     //router.push('/PM02');
     //prjoption == '' ? router.push('/PM02/PD01') : router.push(prjoption);

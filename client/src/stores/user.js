@@ -1,24 +1,22 @@
 import { defineStore } from 'pinia';
-import EmployeeService from '@/service/employee.service.js';
 
-const svcEmployee = new EmployeeService();
-
-export const useStore = defineStore('main', {
-    //id: "store",
+// 登入身分：只有登入 / 登出 / 帳號編輯會變動，與畫面選擇狀態分離避免互相覆蓋
+export const useUserStore = defineStore('user', {
     state: () => ({
-        employeeno: "",
-        ofgroup: "",
-        jobno: "",
-        subjobno: 0
+        identity: null      // 登入後存放整筆 employee 紀錄
     }),
+    getters: {
+        isLogin: (state) => !!state.identity
+    },
     actions: {
-        async login(id, password) {
-            
+        login(employee) {
+            this.identity = employee;
+        },
+        updateIdentity(patch) {
+            this.identity = { ...this.identity, ...patch };
         },
         logout() {
-
+            this.identity = null;
         }
     }
-}); 
-
-//export default useStore;
+});

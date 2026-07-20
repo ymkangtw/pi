@@ -6,6 +6,7 @@ import JoblistSvc from '@/service/joblist.service.js';
 import { useRouter } from 'vue-router';
 import _ from 'lodash';
 import * as util from '@/util/utils.js';
+import { useSelectionStore } from '@/stores/selection.js';
 
 //--------------------------------
 // Component Property (Input)
@@ -29,8 +30,7 @@ const props = defineProps({
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
+const sel = useSelectionStore();
 
 const joblistSvc = new JoblistSvc();
 
@@ -72,18 +72,13 @@ const getJobList = async (param) => {
 
 const handleClick = (value) => {
     //console.log(value.row);
-    user.sJobno = value.row.jobno;
-    user.sSubjobno = value.row.subjobno;
-    user.sGroup = props.group.sGroup;
-    user.sTeam = props.team.sTeam;
-    user.sMember = props.member.sMember;
+    sel.sJobno = value.row.jobno;
+    sel.sSubjobno = value.row.subjobno;
+    sel.sGroup = props.group.sGroup;
+    sel.sTeam = props.team.sTeam;
+    sel.sMember = props.member.sMember;
 
-    util.saveObj('user', user);
-    //console.log('sGroup:', user.sGroup);
-    //console.log(user);
-    //router.push('/PM02');
-    //prjoption == '' ? router.push('/PM02/PD01') : router.push(prjoption);
-    _.isEmpty(hist.link) ? router.push('/PM02/PD01') : router.push(hist.link);   
+    _.isEmpty(sel.hist.link) ? router.push('/PM02/PD01') : router.push(sel.hist.link);
 };
 
 const fmtPrg = (row, column, cellValue, index) => {

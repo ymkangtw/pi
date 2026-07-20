@@ -11,8 +11,6 @@ import * as util from '@/util/utils.js';
 // Local Variable
 //--------------------------------
 const router = useRouter();
-var user = util.loadObj('user');
-var hist = util.loadObj('hist');
 
 const isodocsSvc = new IsodocsSvc();
 

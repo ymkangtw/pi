@@ -22,6 +22,8 @@ import JoblistSvc from '@/service/joblist.service.js';
 import dlgdrawingno from '@/components/dlgdrawingno.vue';
 
 import { trimJSON, loadObj, rNum, fv, pv, StrToInt } from '@/util/utils.js';
+import { useUserStore } from '@/stores/user.js';
+import { useSelectionStore } from '@/stores/selection.js';
 import * as dayjs from 'dayjs';
 import _ from 'lodash';
 import { useRouter } from 'vue-router';
@@ -31,7 +33,9 @@ import { ElMessage } from 'element-plus';
 //--------------------------------
 // Local Variable
 //--------------------------------
-var user = loadObj('user');
+const userStore = useUserStore();
+const sel = useSelectionStore();
+var user = userStore.identity;
 const router = useRouter();
 
 const basicSvc = new BasicSvc();
@@ -116,7 +120,7 @@ onMounted(async () => {
 
 const getBasic = async () => {
     await basicSvc
-        .getBy({ jobno: user.sJobno })
+        .getBy({ jobno: sel.sJobno })
         .then((data) => {
             b.value = trimJSON(data[0]);
         });
@@ -132,7 +136,7 @@ const updateBasic = async () => {
 
 const removeProject = async () => {
     let error = 0;
-    let obj = { jobno: user.sJobno };
+    let obj = { jobno: sel.sJobno };
     if ( obj.jobno != '' ) {
         await basicSvc
             .remove(obj)
