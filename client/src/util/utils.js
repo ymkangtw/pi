@@ -4,21 +4,21 @@
 
 import * as dayjs from 'dayjs';
 
+// 使用 sessionStorage 讓各分頁的登入身分與選擇狀態互相獨立
 export const saveObj = (itemname, value) => {
-    //let valString = JSON.stringify(value);
-    localStorage.setItem(itemname, JSON.stringify(value));
+    sessionStorage.setItem(itemname, JSON.stringify(value));
 }
 
 export const loadObj = (itemname) => {
-    return JSON.parse(localStorage.getItem(itemname));
+    return JSON.parse(sessionStorage.getItem(itemname));
 }
 
 export const delObj = (itemname) => {
-    localStorage.removeItem(itemname);
+    sessionStorage.removeItem(itemname);
 }
 
 export const clearAll = () => {
-    localStorage.clear();
+    sessionStorage.clear();
 }
 
 export const trimObj = (obj) => {
