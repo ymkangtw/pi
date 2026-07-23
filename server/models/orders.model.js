@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
         c1_member:                  { type: DataTypes.STRING(12) }, // C1承辦人
         y6tserialno:                { type: DataTypes.STRING(12) }, // 請購序號
         content:                    { type: DataTypes.STRING(80) }, // 用途
-        category:                   { type: DataTypes.STRING },     // 類別, ref: ordercategory
+        category:                   { type: DataTypes.INTEGER },     // 類別, ref: ordercategory
         jobid:                      { type: DataTypes.STRING(3) },  // 工作編號
         note:                       { type: DataTypes.TEXT },       // as NVARCHAR(MAX) <-- 未使用
         isturnkey:                  { type: DataTypes.BOOLEAN  },   // 外包

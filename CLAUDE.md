@@ -44,9 +44,11 @@ pi/
 │   ├── app.js                       # Express 主程式（Port 80 或 APP_PORT）
 │   ├── routes/                      # 路由定義（index.js 自動載入同目錄 *.route.js）
 │   ├── ctrl/                        # 32 個控制器
-│   ├── models/                      # 27 個資料模型（Sequelize, dotenv 載入 .env）
+│   ├── models/                      # 26 個資料模型（Sequelize, dotenv 載入 .env）
 │   ├── .env                         # DB 環境變數（不進版控）
 │   └── .env.example                 # .env 範本
+├── docs/                            # 專案文件
+│   └── ER-Model.md                  # 資料庫 ER Model（Mermaid，含關聯依據與注意事項）
 ```
 
 ## Commands
@@ -86,14 +88,16 @@ DELETE /api/{resource}/        → remove()
 
 Common Controller 特殊端點：KPI、採購金額（請購/訂購/交貨/驗收，各有預估與實際）、加班統計。
 
-## 資料模型（27 個）
+## 資料模型（26 個）
 
 - **專案**：basic, estibyproject, estibyitem, monthbyproject, monthbyitem, contents
 - **人員**：employee, leader, member, uteam, ugroup
 - **採購**：orders, orderitems, ordercategory
-- **工作追蹤**：task, taskcategory, joblist, drawingno, isodocs
+- **工作追蹤**：task, taskcategory, drawingno, isodocs
 - **報表**：weeklyreportbyprj, monthreportbyprj, weeklyworkbyproject, monthprgbyprojecttotal
 - **查找表**：equiptype, equip, servicevalue, factorycode
+
+ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補充：joblist 只有 route/ctrl 沒有 model（跨表彙總查詢）；`overtime` 資料表存在於 DB 但無 model 檔（common.ctrl.js 加班統計直接以 Raw SQL 存取）；model 宣告的 primaryKey 大多與邏輯主鍵不符，不可依 model 宣告理解資料結構。
 
 ## 學科代碼
 
