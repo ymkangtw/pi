@@ -135,6 +135,8 @@ const selectedOrders = ref();       // select personal orders, for delete
 const sorder = ref();               // selected order
 const ordersTableRef = ref();       // ordersTableRef
 const currentOrder = ref();
+const editingOrder = ref();         // 請購案表格編輯中的列（點列才顯示編輯元件）
+const editingItem = ref();          // 細項表格編輯中的列（點列才顯示編輯元件）
 const pData = ref({
     estimateamount: 0,
     purchaseesti: 0,
@@ -1558,10 +1560,36 @@ const handleOrdersChange = (val) => {
     //console.log(currentOrder.value);
 };
 
+const ctypeLabel = (v) => {
+    const o = ctype.value.find(item => item.value == v);
+    return o ? o.label : v;
+};
+
+const ptaskLabel = (v) => {
+    const o = ptask.value ? ptask.value.find(item => item.value == v) : undefined;
+    return o ? o.label : v;
+};
+
+const itemsClick = (row) => {
+    editingItem.value = row;
+};
+
+// 點擊請購案/細項表格以外的區域時離開編輯模式（date-picker、下拉選單的彈出層 teleport 在 body，不會觸發）
+// 必須用 capture 階段：row-click 進入編輯會重渲染該列，被點的元素隨即脫離 DOM，
+// 若等冒泡階段才判斷 closest('.el-table') 會誤判為表格外而立刻取消編輯
+const exitEditing = (event) => {
+    if (!event.target.closest('.el-table')) {
+        editingOrder.value = null;
+        editingItem.value = null;
+    }
+};
+
 const ordersClick = (row, column, event) => {
     //console.log('click row: ', row);
     //sorder.value = row;
     //getOrderItems();
+    editingOrder.value = row ? row : currentOrder.value;
+    editingItem.value = null;
     sorderitems.value = [];
 
     for (let it of orderitems.value) {
@@ -1676,12 +1704,51 @@ const addOrderitems = async () => {
         }
         let error = 0;
         await orderitemsSvc.create(neworderitem.value).then((data) => { data == 'created' ? error = error : error = error + 1 });
-        error == 0 ? ElMessage({ message: '新增成功', type: 'success' }) : ElMessage({ message: '新增失敗', type: 'error' });
         //sorderitems.value.push(neworderitem.value);
         await getOrderItems(sel.sJobno, sSubjobno.value);
-        ordersClick();       
+        ordersClick();
+        error = error + await syncOrderFromItems();
+        error == 0 ? ElMessage({ message: '新增成功', type: 'success' }) : ElMessage({ message: '新增失敗', type: 'error' });
     }
 
+};
+
+// 依目前細項(sorderitems)重算所選請購案的總價與交貨/驗收日期，寫回 DB 並同步畫面上的請購案列
+const syncOrderFromItems = async () => {
+    if (_.isEmpty(currentOrder.value)) {
+        return 0;
+    }
+    let error = 0;
+    let updateOrderObj = { ...currentOrder.value };
+
+    if (_.isEmpty(sorderitems.value)) {
+        updateOrderObj.estimateamount = 0;
+        updateOrderObj.amount = 0;
+    } else {
+        updateOrderObj.estimateamount = _.reduce(sorderitems.value, (sum, item) => {
+            return sum + pv(item.esti_unit_price) * item.estiexchangerate * item.quantity;
+        }, 0);
+        updateOrderObj.amount = _.reduce(sorderitems.value, (sum, item) => {
+            return sum + pv(item.unit_price) * item.exchangerate * item.quantity;
+        }, 0);
+        updateOrderObj.delivery_esti_date = (_.minBy(sorderitems.value, item => dayjs(item.delivery_esti_date))).delivery_esti_date;
+        updateOrderObj.delivery_date = (_.minBy(sorderitems.value, item => dayjs(item.delivery_date))).delivery_date;
+        updateOrderObj.receivecheck_esti_date = (_.minBy(sorderitems.value, item => dayjs(item.receivecheck_esti_date))).receivecheck_esti_date;
+        let receivecheck_date = (_.minBy(sorderitems.value, item => dayjs(item.receivecheck_date))).receivecheck_date;
+        // 任一細項尚未驗收(無驗收日期)時，整筆請購案視為未驗收
+        _.map(sorderitems.value, item => {
+            if (item.receivecheck_date == null || item.receivecheck_date == '' || dayjs(item.receivecheck_date).isBefore('1900-01-01')) {
+                receivecheck_date = null;
+            }
+        });
+        updateOrderObj.receivecheck_date = receivecheck_date;
+    }
+
+    await ordersSvc.update(updateOrderObj).then((data) => { data == 'updated' ? error = error : error = error + 1 });
+    if (error == 0) {
+        Object.assign(currentOrder.value, updateOrderObj);  // 同步畫面上 orders 表格的同一列
+    }
+    return error;
 };
 
 const updateOrderitems = async () => {
@@ -1699,76 +1766,7 @@ const updateOrderitems = async () => {
             await orderitemsSvc.update(it).then((data) => { data == 'updated' ? error = error : error = error + 1 });
         }
 
-        let estimateamount = _.reduce(updateObj, (sum, item) => {
-            return sum + item.esti_unit_price * item.estiexchangerate * item.quantity;
-        }, 0);        
-        let amount = _.reduce(updateObj, (sum, item) => {
-            return sum + item.unit_price * item.exchangerate * item.quantity;
-        }, 0);        
-
-        let delivery_esti_date = (_.minBy(sorderitems.value, item => dayjs(item.delivery_esti_date))).delivery_esti_date;
-        let delivery_date = (_.minBy(sorderitems.value, item => dayjs(item.delivery_date))).delivery_date;
-        let receivecheck_esti_date = (_.minBy(sorderitems.value, item => dayjs(item.receivecheck_esti_date))).receivecheck_esti_date;
-        let receivecheck_date = (_.minBy(sorderitems.value, item => dayjs(item.receivecheck_date))).receivecheck_date;
-        //console.log('receivecheck_date: ', receivecheck_date)
-        //let receivecheck_date;
-
-        //let rd = _.map(sorderitems.value, 'receivecheck_date');
-        //let z = _.min(rd);
-/*
-        const data = [
-            { item: 1, d_date: '2023-05-01' },
-            { item: 2, d_date: '' },
-            { item: 3, d_date: '1899-12-31' },
-            { item: 4, d_date: '2023-12-01' },
-        ];
-*/
-
-        _.map(sorderitems.value, item => {
-            if (item.receivecheck_date == null || item.receivecheck_date == '' || dayjs(item.receivecheck_date).isBefore('1900-01-01')) {
-                receivecheck_date = null;
-            }
-        });
-
-        //let rd = _.filter(sorderitems.value, (item) => item.receivecheck_date != '');
-
-        //let receivecheck_date = (_.minBy(sorderitems.value, item => dayjs(item.receivecheck_date))).receivecheck_date;
-
-        //console.log('rd: ', rd);
-        //console.log('z: ', z);
-/*
-        const data = [
-            { item: 1, d_date: '2023-05-01' },
-            { item: 2, d_date: '' },
-            { item: 3, d_date: '2023-02-01' },
-            { item: 4, d_date: '2023-12-01' },
-        ];
-
-        const validDates = data
-            .filter(item => item.d_date !== '') // Filter out empty dates
-            .map(item => dayjs(item.d_date)); // Convert to dayjs objects
-
-        const latestDate = _.max(validDates);
-        const result = latestDate ? latestDate.format('YYYY-MM-DD') : '';
-        console.log(result);
-*/
-
-        //let updateObj2 = _.map([currentOrder.value], o => { return { ...o } });
-        //updateObj2.estimateamount = estimateamount;
-        let updateOrderObj = { ...currentOrder.value };
-        updateOrderObj.estimateamount = estimateamount;
-        updateOrderObj.amount = amount;
-        updateOrderObj.delivery_esti_date = delivery_esti_date;
-        updateOrderObj.delivery_date = delivery_date;
-        updateOrderObj.receivecheck_esti_date = receivecheck_esti_date;
-        updateOrderObj.receivecheck_date = receivecheck_date;
-        //console.log('updateOrderObj:', updateOrderObj);
-        //console.log('update error:', error);
-        //console.log('s_total:', estimateamount);
-        //console.log('oi rec_chk_d: ', get_lastdate_bycol('receivecheck_esti_date', sorderitems.value));
-        //console.log('updateOrderObj', updateOrderObj);
-
-        await ordersSvc.update(updateOrderObj).then((data) => { data == 'updated' ? error = error : error = error + 1 });
+        error = error + await syncOrderFromItems();
         //let idx = _.findIndex(orders.value, (o) => {
         //    return o.jobid == item.jobid;
         //});
@@ -1791,8 +1789,9 @@ const removeOrderitems = async () => {
             sorderitems.value.splice(idx, 1);
             await orderitemsSvc.remove(it).then((data) => { data == 'removed' ? error = error : error = error + 1 });
         }
-        error == 0 ? ElMessage({ message: '刪除成功', type: 'success' }) : ElMessage({ message: '刪除失敗', type: 'error' });
         await getOrderItems(sel.sJobno, sSubjobno.value);
+        error = error + await syncOrderFromItems();
+        error == 0 ? ElMessage({ message: '刪除成功', type: 'success' }) : ElMessage({ message: '刪除失敗', type: 'error' });
     }
 
 };
@@ -3162,6 +3161,7 @@ const test = (item) => {
         
         <!--update Orders & Orderitems Dialog-->
         <el-dialog v-model=" updateOrdersDlg " fullscreen>
+          <div @click.capture="exitEditing">
             <template>
                 <!--create new Orders-->     
                 <el-dialog v-model="addOrdersDlg" width="70%" title="新增購案" append-to-body>
@@ -3462,38 +3462,39 @@ const test = (item) => {
                     -->
                         <el-table-column fixed type="selection" width="40" header-align="center" align="center" />
                         <el-table-column fixed label="項次" prop="item" width="55" header-align="center" align="center" />
-                        <el-table-column fixed label="名稱" prop="content" width="160" header-align="center" align="left">
+                        <el-table-column fixed label="名稱" prop="content" width="160" header-align="center" align="left" show-overflow-tooltip>
                             <template #default="{ row }">
-                                <el-input v-model="row.content" size="small" />
+                                <el-input v-if="row === editingOrder" v-model="row.content" size="small" />
+                                <span v-else>{{ row.content }}</span>
                             </template>
-                        </el-table-column>    
+                        </el-table-column>
                         <el-table-column label="類別" prop="category" width="110" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-select v-model="row.category" size="small">
+                                <el-select v-if="row === editingOrder" v-model="row.category" size="small">
                                     <el-option v-for="item in ctype" :key="item.value" :label="item.label" :value="item.value" />
                                 </el-select>
+                                <span v-else>{{ ctypeLabel(row.category) }}</span>
                             </template>
-                        </el-table-column>    
+                        </el-table-column>
                         <el-table-column label="訂單/合約編號" prop="orderno" width="120" header-align="center" align="left">
                             <template #default="{ row }">
-                                <el-input v-model="row.orderno" size="small" />
-                            </template>                           
+                                <el-input v-if="row === editingOrder" v-model="row.orderno" size="small" />
+                                <span v-else>{{ row.orderno }}</span>
+                            </template>
                         </el-table-column>
-                        <el-table-column label="請購序號" prop="y6tserialno" width="100" header-align="center" align="center">
-                            <template #default="{ row }">
-                                <el-input v-model="row.y6tserialno" size="small" disabled />
-                            </template>                                                   
-                        </el-table-column>
+                        <el-table-column label="請購序號" prop="y6tserialno" width="100" header-align="center" align="center" />
 
                         <el-table-column label="請購日期" width="250" header-align="center" align="center">
                             <el-table-column prop="purchase_esti_issue_date" label="預定" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.purchase_esti_issue_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingOrder" v-model="row.purchase_esti_issue_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.purchase_esti_issue_date }}</span>
                                 </template>
                             </el-table-column>
                             <el-table-column prop="purchase_issue_date" label="實際" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.purchase_issue_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingOrder" v-model="row.purchase_issue_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.purchase_issue_date }}</span>
                                 </template>
                             </el-table-column>
                         </el-table-column>
@@ -3501,47 +3502,55 @@ const test = (item) => {
                         <el-table-column label="訂購日期" width="250" header-align="center" align="center">
                             <el-table-column prop="c1_order_esti_date" label="預定" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.c1_order_esti_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingOrder" v-model="row.c1_order_esti_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.c1_order_esti_date }}</span>
                                 </template>
                             </el-table-column>
                             <el-table-column prop="c1_order_date" label="實際" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.c1_order_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingOrder" v-model="row.c1_order_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.c1_order_date }}</span>
                                 </template>
                             </el-table-column>
                         </el-table-column>
 
                         <el-table-column label="C1/Y61承辦日期" prop="c1_issue_date" width="135" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-date-picker v-model="row.c1_issue_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
-                            </template>                        
-                        </el-table-column>    
+                                <el-date-picker v-if="row === editingOrder" v-model="row.c1_issue_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                <span v-else>{{ row.c1_issue_date }}</span>
+                            </template>
+                        </el-table-column>
                         <el-table-column label="承辦人" prop="c1_member" width="90" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-input v-model="row.c1_member" size="small" />
-                            </template>                        
+                                <el-input v-if="row === editingOrder" v-model="row.c1_member" size="small" />
+                                <span v-else>{{ row.c1_member }}</span>
+                            </template>
                         </el-table-column>
-                        <el-table-column label="請購類型" prop="jobid" width="120" header-align="center" align="center">
+                        <el-table-column label="請購類型" prop="jobid" width="120" header-align="center" align="left" show-overflow-tooltip>
                             <template #default="{ row }">
-                                <el-select v-model="row.jobid" size="small">
+                                <el-select v-if="row === editingOrder" v-model="row.jobid" size="small">
                                     <el-option v-for="item in ptask" :key="item.value" :label="item.label" :value="item.value" />
                                 </el-select>
-                            </template>                                                 
+                                <span v-else>{{ ptaskLabel(row.jobid) }}</span>
+                            </template>
                         </el-table-column>
                         <el-table-column label="外包" prop="isturnkey" width="55" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-checkbox v-model="row.isturnkey" label="" size="small" />
-                            </template>                                                 
+                                <el-checkbox v-if="row === editingOrder" v-model="row.isturnkey" label="" size="small" />
+                                <span v-else>{{ row.isturnkey ? '✔' : '' }}</span>
+                            </template>
                         </el-table-column>
                         <el-table-column label="預估總價" prop="estimateamount" width="110" header-align="center" align="right">
                             <template #default="{ row }">
-                                <el-input v-model="row.estimateamount" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                <el-input v-if="row === editingOrder" v-model="row.estimateamount" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                <span v-else>{{ fv(row.estimateamount) }}</span>
                             </template>
-                        </el-table-column>                        
-                        
+                        </el-table-column>
+
                         <el-table-column label="實際總價" prop="amount" width="110" header-align="center" align="right">
                             <template #default="{ row }">
-                                <el-input v-model="row.amount" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                <el-input v-if="row === editingOrder" v-model="row.amount" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                <span v-else>{{ fv(row.amount) }}</span>
                             </template>
                         </el-table-column>
                         
@@ -3573,118 +3582,136 @@ const test = (item) => {
             <hr />
             <el-row>
                 <el-col :span="24">
-                    <el-table v-if="sorderitems" :data="sorderitems" height="360" show-summary :summary-method="getOrderItemsSummary" border  style="width: 100%" class="fs14 ma2" highlight-current-row @selection-change="handleSelectionOrderitems"> 
+                    <el-table v-if="sorderitems" :data="sorderitems" height="360" show-summary :summary-method="getOrderItemsSummary" border  style="width: 100%" class="fs14 ma2" highlight-current-row @row-click="itemsClick" @selection-change="handleSelectionOrderitems">
                         <el-table-column fixed type="selection" width="40" header-align="center" align="center" />
                         <el-table-column fixed label="項次" prop="item" width="60" header-align="center" align="center" />
-                        <el-table-column fixed label="物品名稱/規範" prop="name" width="300" header-align="center" align="left">
+                        <el-table-column fixed label="物品名稱/規範" prop="name" width="290" header-align="center" align="left">
                             <template #default="{ row }">
-                                <el-input type="textarea" size="small" v-model="row.name" :rows="2" style="width: 100%" />
+                                <el-input v-if="row === editingItem" type="textarea" size="small" v-model="row.name" :rows="2" style="width: 100%" />
+                                <span v-else>{{ row.name }}</span>
                             </template>
-                        </el-table-column>                
+                        </el-table-column>
                         <el-table-column label="單位" prop="unit" width="70" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-input v-model="row.unit" size="small" />
+                                <el-input v-if="row === editingItem" v-model="row.unit" size="small" />
+                                <span v-else>{{ row.unit }}</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="幣別" prop="currency" width="80" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-select v-model="row.currency" size="small">
+                                <el-select v-if="row === editingItem" v-model="row.currency" size="small">
                                     <el-option v-for="item in currencytype" :key="item.value" :label="item.label" :value="item.value" size="small" />
-                                </el-select>                                
+                                </el-select>
+                                <span v-else>{{ row.currency }}</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="匯率" width="120" header-align="center" align="center">
                             <el-table-column label="預估" prop="estiexchangerate" width="70" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-input v-model="row.estiexchangerate" size="small" />
+                                    <el-input v-if="row === editingItem" v-model="row.estiexchangerate" size="small" />
+                                    <span v-else>{{ row.estiexchangerate }}</span>
                                 </template>
                             </el-table-column>
                             <el-table-column label="實際" prop="exchangerate" width="70" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-input v-model="row.exchangerate" size="small" />
+                                    <el-input v-if="row === editingItem" v-model="row.exchangerate" size="small" />
+                                    <span v-else>{{ row.exchangerate }}</span>
                                 </template>
                             </el-table-column>
                         </el-table-column>
                         <el-table-column label="單價" width="210" header-align="center" align="center">
                             <el-table-column label="預估" prop="esti_unit_price" width="105" header-align="center" align="right">
                                 <template #default="{ row }">
-                                    <el-input v-model="row.esti_unit_price" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                    <el-input v-if="row === editingItem" v-model="row.esti_unit_price" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                    <span v-else>{{ fv(row.esti_unit_price) }}</span>
                                 </template>
                             </el-table-column>
                             <el-table-column label="實際" prop="unit_price" width="105" header-align="center" align="right">
                                 <template #default="{ row }">
-                                    <el-input v-model="row.unit_price" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                    <el-input v-if="row === editingItem" v-model="row.unit_price" size="small" class="right-aligned" :formatter="fv" :parser="pv" />
+                                    <span v-else>{{ fv(row.unit_price) }}</span>
                                 </template>
                             </el-table-column>
                         </el-table-column>
                         <el-table-column label="數量" prop="quantity" width="70" header-align="center" align="right">
                             <template #default="{ row }">
-                                <el-input v-model="row.quantity" size="small" class="right-aligned" />
+                                <el-input v-if="row === editingItem" v-model="row.quantity" size="small" class="right-aligned" />
+                                <span v-else>{{ row.quantity }}</span>
                             </template>
                         </el-table-column>
                         <el-table-column label="交貨日期" width="250" header-align="center" align="center">
                             <el-table-column prop="delivery_esti_date" label="預定" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.delivery_esti_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingItem" v-model="row.delivery_esti_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.delivery_esti_date }}</span>
                                 </template>
                             </el-table-column>
                             <el-table-column prop="delivery_date" label="實際" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.delivery_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
-                                </template>                            
+                                    <el-date-picker v-if="row === editingItem" v-model="row.delivery_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.delivery_date }}</span>
+                                </template>
                             </el-table-column>
                         </el-table-column>
                         <el-table-column label="驗收日期" width="250" header-align="center" align="center">
                             <el-table-column prop="receivecheck_esti_date" label="預定" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.receivecheck_esti_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingItem" v-model="row.receivecheck_esti_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.receivecheck_esti_date }}</span>
                                 </template>
                             </el-table-column>
                             <el-table-column prop="receivecheck_date" label="實際" width="125" header-align="center" align="center">
                                 <template #default="{ row }">
-                                    <el-date-picker v-model="row.receivecheck_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <el-date-picker v-if="row === editingItem" v-model="row.receivecheck_date" size="small" type="date" :clearable="false" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100px" />
+                                    <span v-else>{{ row.receivecheck_date }}</span>
                                 </template>
                             </el-table-column>
                         </el-table-column>
                         <el-table-column label="驗收比率" prop="receivecheckratio" width="60" header-align="center" align="right">
                             <template #default="{ row }">
-                                <el-input v-model="row.receivecheckratio" class="right-aligned" size="small" />
+                                <el-input v-if="row === editingItem" v-model="row.receivecheckratio" class="right-aligned" size="small" />
+                                <span v-else>{{ row.receivecheckratio }}</span>
                             </template>
                         </el-table-column>
-                        <el-table-column label="物料編號" prop="materialcode" width="110" header-align="center" align="center">
+                        <el-table-column label="物料編號" prop="materialcode" width="120" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-input v-model="row.materialcode" size="small" />
+                                <el-input v-if="row === editingItem" v-model="row.materialcode" size="small" />
+                                <span v-else>{{ row.materialcode }}</span>
                             </template>
                         </el-table-column>
-                      
+
                         <el-table-column label="規範編號" prop="specification_code" width="100" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-input v-model="row.specification_code" size="small" />
+                                <el-input v-if="row === editingItem" v-model="row.specification_code" size="small" />
+                                <span v-else>{{ row.specification_code }}</span>
                             </template>
                         </el-table-column>
-                    
+
                         <el-table-column label="廠商名稱" prop="name_q" width="100" header-align="center" align="center">
                             <template #default="{ row }">
                                 <el-tooltip
+                                    v-if="row === editingItem"
                                     placement="top"
                                     effect="light"
                                     :content="row.supplierid"
                                 >
                                     <el-input v-model="row.name_q" size="small" />
                                 </el-tooltip>
-                                
+                                <span v-else>{{ row.name_q }}</span>
                             </template>
                         </el-table-column>
-                        
+
                         <el-table-column label="訂單編號" prop="orderno" width="120" header-align="center" align="center">
                             <template #default="{ row }">
-                                <el-input v-model="row.orderno" size="small" />
+                                <el-input v-if="row === editingItem" v-model="row.orderno" size="small" />
+                                <span v-else>{{ row.orderno }}</span>
                             </template>
                         </el-table-column>
 
                         <el-table-column label="品質" prop="quality" width="60" header-align="center" align="right">
                             <template #default="{ row }">
-                                <el-input v-model="row.quality" size="small" />
+                                <el-input v-if="row === editingItem" v-model="row.quality" size="small" />
+                                <span v-else>{{ row.quality }}</span>
                             </template>
                         </el-table-column>
                         
@@ -3703,8 +3730,9 @@ const test = (item) => {
                 <el-button type="danger" class="ma2" @click=" removeOrderitems(); ">
                     <i :class="['mdi', 'mdi-18px', 'mdi-minus']" />
                     刪除
-                </el-button>                
+                </el-button>
             </el-row>
+          </div>
 
             <template #footer>
 
