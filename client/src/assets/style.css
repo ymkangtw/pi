@@ -317,6 +317,11 @@
 .ma8 { margin: 8px; }
 .ma16 { margin: 16px; }
 
+/* 垂直 margin（不影響水平對齊，用於需要靠齊容器左右緣的元素） */
+.mv2 { margin: 2px 0; }
+.mv4 { margin: 4px 0; }
+.mv8 { margin: 8px 0; }
+
 .fstart {
     display: flex;
     align-items: center;
@@ -331,6 +336,11 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+}
+/* Element Plus 的 .el-col-N { display: block } 在 bundle 中排序較後，會蓋掉上面的 flex，
+   需以較高特異度確保 el-col 上的 fstart/fcenter/fend 對齊生效 */
+.el-col.fstart, .el-col.fcenter, .el-col.fend {
+    display: flex;
 }
 .item-align {
     display: flex;

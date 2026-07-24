@@ -52,7 +52,7 @@ const Login = () => {
                 localStorage.setItem('pi_lastEmployeeno', employeeno.value);
                 //console.log('login: ', userStore.identity);
                 router
-                    .push({ path: '/' })
+                    .push({ path: '/project' })
                     .then(() => {
                         router.go(0);
                     });

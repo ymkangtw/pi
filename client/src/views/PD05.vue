@@ -2900,8 +2900,8 @@ const test = (item) => {
                                     </span>
                                 </el-col>
                                 <el-col :span="12" class="fend">
-                                    <span class="ma4">
-                                        <el-button type="primary" class="ma2" @click="saveMptotal(sel.sJobno)">
+                                    <span class="mv4">
+                                        <el-button type="primary" class="mv2" @click="saveMptotal(sel.sJobno)">
                                             儲存
                                         </el-button>
                                     </span>
@@ -2910,7 +2910,7 @@ const test = (item) => {
 
                             </el-row>
                             <el-row>
-                                <div class="fstart fs16 ma4" style="width: 100%;">
+                                <div class="fstart fs16 mv4" style="width: 100%;">
                                     <el-input v-model="mptotal.isoprogressdescription" :rows="12" type="textarea" :class="['report', 'custom-textarea']" style="font-size: 18px;"/>
                                 </div>                                
                             </el-row>
@@ -2933,8 +2933,8 @@ const test = (item) => {
                                     </span>
                                 </el-col>
                                 <el-col :span="12" class="fend">
-                                    <span class="ma4">
-                                        <el-button type="primary" class="ma2" @click="saveMptotal(sel.sJobno)">
+                                    <span class="mv4">
+                                        <el-button type="primary" class="mv2" @click="saveMptotal(sel.sJobno)">
                                             儲存
                                         </el-button>
                                     </span>
@@ -2943,7 +2943,7 @@ const test = (item) => {
 
                                 </el-row>
                                 <el-row>
-                                <div class="fstart fs16 ma4" style="width: 100%;">
+                                <div class="fstart fs16 mv4" style="width: 100%;">
                                     <el-input v-model="mptotal.worksummaried" :rows="12" type="textarea" :class="['report', 'custom-textarea']" style="font-size: 18px;"/>
                                 </div>                                
                                 </el-row>                            

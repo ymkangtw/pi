@@ -67,7 +67,7 @@ const updateContent = async () => {
 </script>
 <template>
     <div v-if="c">
-        <el-row class="fend ma8">
+        <el-row class="fend mv8">
             <el-button type="primary" @click="updateContent">儲存</el-button>
         </el-row>
         <el-row>
