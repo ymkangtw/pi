@@ -134,8 +134,9 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - PM01 的 team/group/member 元件以 `defineExpose` 暴露內部選單值，父頁需透過 `refXxx.value.xxx` 賦值才會改變顯示；team 元件僅 DBDesigner 渲染（`v-if`），賦值前需檢查 `refTeam.value` 存在
 - PD05 請購管理的兩個表格採「點列才編輯」（`row === editingOrder/editingItem` 才渲染編輯元件，其餘列純文字）——整表掛編輯元件會嚴重卡頓（曾實測開啟 2 秒、每鍵擊 400ms）；點表格外離開編輯的 `exitEditing` 必須掛在 `@click.capture`，冒泡階段才判斷時 `event.target` 可能已因進入編輯的重渲染脫離 DOM，`closest('.el-table')` 會誤判成表格外而立刻取消編輯
 - orders/orderitems 的 getBy 回傳單價/總價是 SQL `convert(money)` 格式化的帶逗號字串（顯示值），寫回 DB 前必須以 `pv()` 轉回數字；細項新增/更新/刪除後由 `syncOrderFromItems()` 依細項重算請購案總價與交貨/驗收日期，寫 DB 並同步畫面上的 orders 列
-- **getBy 白名單標準模式**（2026-07-25 全面套用，防 SQL Injection）：`const allowedKeys = Object.keys(db.<model>.rawAttributes);`，名單外的 query key 回 400；條件用 `conds` 陣列收集再 `join(" and ")`，無參數時省略 `where` 子句（行為同 getAll）。變體：isodocs 用 `or` 連接且一般值轉 `%值%` 包含查詢；leaderlist/memberlist 無自己的 model，分別用 `db.leader`/`db.member`；common.ctrl 的 condstr 是死碼（key 從未進 SQL）不需白名單；joblist 未套用（Backlog）
+- **getBy 白名單標準模式**（2026-07-25 全面套用，防 SQL Injection）：`const allowedKeys = Object.keys(db.<model>.rawAttributes);`，名單外的 query key 回 400；條件用 `conds` 陣列收集再 `join(" and ")`，無參數時省略 `where` 子句（行為同 getAll）。變體：isodocs 用 `or` 連接且一般值轉 `%值%` 包含查詢；leaderlist/memberlist 無自己的 model，分別用 `db.leader`/`db.member`；common.ctrl 的 condstr 是死碼（key 從未進 SQL）不需白名單；joblist 因 SQL 含多層 join/subquery，採**只插入白名單檢查、不動 condstr 與 SQL** 的保守修法（條件掛 employee 別名 `e.` 的 5 個函式用 `db.employee`，Idreport/Fnreport 用 `db.basic`），改動前後以真實參數逐位元組比對回應驗證
 - **model 欄位宣告必須涵蓋前端查詢用到的所有 DB 欄位**——白名單以 model 為唯一依據，前端查 model 未宣告的欄位會被 400 誤擋（教訓：uteam 的 `visible` 欄位 DB 有、model 沒宣告，PM01/PS01/PS02 都用 `getBy({visible:1})` 篩選團隊，已補宣告）；新增 controller 測試時，測試用的欄位名要先查 model 確認存在
+- PDF 報表（PD05 工程月報 / 進度管制表 / 專案報告）由 `util.service.js` 以 **jsPDF 純前端產生**（含 NotoSansTC 中文字型、甘特圖），最後 `doc.save()` 建 Blob 觸發下載，不經後端；**用 Playwright 等自動化瀏覽器測試時，下載檔會落在 CDP 指定目錄並以隨機 GUID 命名**（真實檔名改由 `downloadWillBegin` 事件的 suggestedFilename 傳遞），看起來像「功能無效」，實際檔案完好——腳本要保留檔名須用 `download.suggestedFilename()` + `saveAs()`；此現象與 `--no-sandbox` 無關，一般瀏覽器操作會正常存成 `${jobno}-${jobname}.pdf`
 
 ## 待改進事項（Backlog，2026-07-21 盤點，2026-07-25 架構評估補充）
 
@@ -146,7 +147,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 **P1 安全（最優先，影響最大）**
 
 1. **後端驗證（方案 C）**：登入不驗密碼、API 無任何身分驗證中介層，任何人可直接呼叫 `/api/...` 讀寫資料（employee 含個資）；登入回傳整筆 employee 過寬
-2. **getBy SQL Injection 風險**（2026-07-25 已完成 26 個 controller，模式詳見開發注意事項）：僅剩 `joblist.ctrl.js`（跨表彙總查詢、無對應 model，需手寫白名單）尚未處理
+2. **getBy SQL Injection 風險**（2026-07-25 全部完成，模式詳見開發注意事項）：28 個 controller 已加白名單（含 joblist 7 個函式、equiptype）；equip.ctrl 走 Sequelize model API 本來就安全；equip/equiptype 是前端無呼叫的孤兒 API，可考慮移除 route（見 P5）
 
 **P2 高效益低成本（實際 bug 或幾乎零成本）**
 
@@ -163,4 +164,4 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 
 **P5 長期（不急，累積到適當時機一次做）**
 
-7. **長期項目**：三套圖表庫（ECharts/Chart.js/D3）收斂為一套；Webpack 遷移 Vite（Vue 生態現行標配，值得但不急）；建立 schema.sql 或 migration 作為資料庫 schema 唯一真相來源（models 宣告名實不符，只剩欄位註解價值）；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）
+7. **長期項目**：三套圖表庫（ECharts/Chart.js/D3）收斂為一套；Webpack 遷移 Vite（Vue 生態現行標配，值得但不急）；建立 schema.sql 或 migration 作為資料庫 schema 唯一真相來源（models 宣告名實不符，只剩欄位註解價值）；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）；移除前端無呼叫的孤兒 API route（equip、equiptype，front-end 無 service 或 service 無人 import）

@@ -27,10 +27,15 @@ async function getAll(req, res) {
 };
 
 async function getBy(req, res) {
+	// 條件欄位掛在 employee 別名 e. 上，用 employee model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.employee.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
@@ -72,10 +77,15 @@ async function getBy(req, res) {
 };
 
 async function getByTeam(req, res) {
+	// 條件欄位掛在 employee 別名 e. 上，用 employee model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.employee.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
@@ -117,10 +127,15 @@ async function getByTeam(req, res) {
 };
 
 async function getByAllTeamMember(req, res) {
+	// 條件欄位掛在 employee 別名 e. 上，用 employee model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.employee.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
@@ -177,10 +192,15 @@ async function getByAllTeamMember(req, res) {
 
 
 async function getByLeader(req, res) {
+	// 條件欄位掛在 employee 別名 e. 上，用 employee model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.employee.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
@@ -222,10 +242,15 @@ async function getByLeader(req, res) {
 };
 
 async function getByMember(req, res) {
+	// 條件欄位掛在 employee 別名 e. 上，用 employee model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.employee.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
@@ -282,10 +307,15 @@ async function getByMember(req, res) {
 };
 
 async function getByIdreport(req, res) {
+	// 條件欄位屬 basic 表，用 basic model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.basic.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
@@ -323,10 +353,15 @@ async function getByIdreport(req, res) {
 };
 
 async function getByFnreport(req, res) {
+	// 條件欄位屬 basic 表，用 basic model 欄位白名單防 SQL Injection
+	const allowedKeys = Object.keys(db.basic.rawAttributes);
 	let eq;
 	let queryobj = {};
 	let condstr = "";
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
