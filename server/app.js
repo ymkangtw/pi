@@ -26,7 +26,14 @@ app.use(bodyParser.urlencoded({ extended: false }));
 //}));
 
 // request static resource
-app.use(express.static(path.resolve(__dirname, '../client/dist')));
+app.use(express.static(path.resolve(__dirname, '../client/dist'), {
+	// index.html 每次都要向伺服器確認；否則瀏覽器拿到舊 html，裡面寫的還是舊的 bundle hash，contenthash 就白做了
+	setHeaders: (res, filePath) => {
+		if (filePath.endsWith('.html')) {
+			res.setHeader('Cache-Control', 'no-cache');
+		}
+	}
+}));
 app.use(express.static("d:\\DOC\\"));
 
 
@@ -78,11 +85,15 @@ app.delete('api/equiptype/', equiptypeapi.remove);
 // request pages
 app.get('/', function (req, res) {
 	var html = fs.readFileSync(path.resolve(__dirname, '../client/dist/index.html'), 'utf-8');
+	// 這條繞過 express.static，要自己補 no-cache
+	res.setHeader('Cache-Control', 'no-cache');
 	res.send(html);
 });
 
 // SPA fallback：非 /api 的 GET 請求（重新整理或直接開深層網址）一律回傳 index.html，交給前端 Vue Router 處理
 app.get(/^(?!\/api).*/, function (req, res) {
+	// 這條繞過 express.static，要自己補 no-cache
+	res.setHeader('Cache-Control', 'no-cache');
 	res.sendFile(path.resolve(__dirname, '../client/dist/index.html'));
 });
 

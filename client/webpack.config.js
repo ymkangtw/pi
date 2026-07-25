@@ -19,7 +19,11 @@ module.exports = (env, argv) => {
         entry: path.resolve(__dirname, './src/index.js'),
         output: {
             path: path.resolve(__dirname, 'dist'),
-            filename: 'bundle.js',
+            // production 才加 contenthash（檔案內容變才換檔名，解決部署後瀏覽器吃舊快取）
+            // development 維持固定檔名：HMR 與 contenthash 不相容，webpack 會直接報錯
+            filename: mode === 'production' ? 'bundle.[contenthash:8].js' : 'bundle.js',
+            // router 的 import() 動態分包（40+ 個），不設會沿用 filename 推導成固定的 [id].bundle.js
+            chunkFilename: mode === 'production' ? '[id].bundle.[contenthash:8].js' : '[id].bundle.js',
             //sourceMapFilename: 'bundle.map',
         },
         module: {
@@ -68,7 +72,8 @@ module.exports = (env, argv) => {
             extensions: ['.ts', '.js', '.vue', '.json']
         },
         plugins: [
-            new webpack.HotModuleReplacementPlugin(), 
+            // HMR 只在開發模式需要；production 掛著會讓 contenthash 無法使用
+            ...(mode === 'development' ? [new webpack.HotModuleReplacementPlugin()] : []),
             new webpack.DefinePlugin({
                 //"process.env.NODE_ENV": JSON.stringify("development"),
                 __VUE_OPTIONS_API__: JSON.stringify(true),

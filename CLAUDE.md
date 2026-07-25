@@ -126,6 +126,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - 前端 API 呼叫使用相對路徑 `/api/...`，dev 模式透過 webpack proxy 轉發到後端
 - 部署時 Express 靜態服務 `client/dist/` 作為前端入口，`D:\DOC\` 提供靜態文件
 - SPA 深層路徑（如 `/PM01`）重新整理由 `app.js` 的 fallback 路由（RegExp 排除 `/api`）回傳 `index.html`，交前端 Vue Router 處理；Express 5 不支援 `app.get('*')`，需改用 RegExp 或具名萬用字元；dev 模式（webpack-dev-server）則由 `devServer.historyApiFallback: true` 處理
+- **建置檔名與快取**（2026-07-25 導入）：production build 的 `output.filename` / `output.chunkFilename` 帶 `[contenthash:8]`（`bundle.xxxxxxxx.js`、`[id].bundle.xxxxxxxx.js`），內容沒變 hash 就不變（webpack 5 production 預設 deterministic ids），改一支 view 只有該 chunk 與主 bundle 換檔名；**development 必須維持固定檔名**，HMR 與 contenthash 不相容會直接編譯失敗，`HotModuleReplacementPlugin` 也因此改為僅 development 掛載。配套是 `app.js` 讓 `index.html` 回 `Cache-Control: no-cache`（express.static 的 `setHeaders`、`app.get('/')`、SPA fallback 三處都要設，後兩者繞過 static），否則瀏覽器快取住舊 html、裡面寫的還是舊 hash，等於沒改。註解類修改重 build 後 hash 不變是正常的——production 壓縮後產出內容相同
 - 使用 lodash 的檔案一律明確 `import _ from 'lodash'`，不可依賴 webpack AMD 模擬讓 lodash 掛上 `window._` 的副作用（2026-07-21 已全數補齊）
 - 通用工具 CSS（`.ma2/.ma4/.ma8/.ma16`、`.mv2/.mv4/.mv8`、`.fstart/.fcenter/.fend`、`.item-align`、`.shadow`）集中於 `assets/style.css`，元件內不再重複定義；同名但內容不同者（PD04 的 `.fstart`、PM01 與 App.vue 的 `.item-align`）保留在元件內，以 scoped 較高特異度覆蓋全域
 - `el-col` 上掛 `.fstart/.fcenter/.fend` 會被 Element Plus 的 `.el-col-N { display: block }` 蓋掉（bundle 排序在 style.css 之後），style.css 已用 `.el-col.fstart` 等較高特異度規則還原 flex；需要「保留上下間距但右緣要對齊容器」時用 `.mv*`（垂直 margin），不要用 `.ma*`（四邊 margin 會造成水平內縮/偏移）
@@ -151,7 +152,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 
 **P2 高效益低成本（實際 bug 或幾乎零成本）**
 
-3. **便宜除雷**：webpack output 加 `[contenthash]`（目前固定 bundle.js，**部署後瀏覽器吃舊快取，是實際會發生的 bug**）；移除未使用的 vuex（含 webpack alias）與 typescript/ts-loader/tsconfig.json（lodash 補 import 已於 2026-07-21 完成）
+3. **便宜除雷**：移除未使用的 vuex（含 webpack alias）與 typescript/ts-loader/tsconfig.json（lodash 補 import 已於 2026-07-21 完成；webpack output `[contenthash]` + index.html no-cache 已於 2026-07-25 完成，詳見開發注意事項）
 4. **工程品質標配**：引入 ESLint + Prettier；補最小測試框架——後端 controller 與前端金額計算邏輯（如 PD05 `syncOrderFromItems`）優先；行有餘力再加 CI
 
 **P3 使用者可見的改善（成本低）**
@@ -164,4 +165,4 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 
 **P5 長期（不急，累積到適當時機一次做）**
 
-7. **長期項目**：三套圖表庫（ECharts/Chart.js/D3）收斂為一套；Webpack 遷移 Vite（Vue 生態現行標配，值得但不急）；建立 schema.sql 或 migration 作為資料庫 schema 唯一真相來源（models 宣告名實不符，只剩欄位註解價值）；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）；移除前端無呼叫的孤兒 API route（equip、equiptype，front-end 無 service 或 service 無人 import）
+7. **長期項目**：帶 hash 的靜態檔可再給 `max-age=31536000, immutable` 免去每次開頁 40 幾個 304 往返（須依檔名 pattern 分流，`pic/` 是原名複製沒有 hash，一起吃長快取會導致換圖無效）；三套圖表庫（ECharts/Chart.js/D3）收斂為一套；Webpack 遷移 Vite（Vue 生態現行標配，值得但不急）；建立 schema.sql 或 migration 作為資料庫 schema 唯一真相來源（models 宣告名實不符，只剩欄位註解價值）；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）；移除前端無呼叫的孤兒 API route（equip、equiptype，front-end 無 service 或 service 無人 import）
