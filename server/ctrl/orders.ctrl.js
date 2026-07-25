@@ -44,27 +44,31 @@ async function getAll(req, res) {
 };
 
 async function getBy(req, res) {
-	let eq;
+	// query string 的 key 會直接串進 SQL（值有 bind、key 沒有），只允許 model 宣告的欄位名，防 SQL Injection
+	const allowedKeys = Object.keys(db.orders.rawAttributes);
 	let queryobj = {};
-	let condstr = "";
+	let conds = [];
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
-			eq = 'like';
+			conds.push(`${key} like $${key}`);
 			queryobj[key] = '%' + val;
 		} else if (val == '' || val == null) {
-			eq = 'like';
+			conds.push(`${key} like $${key}`);
 			queryobj[key] = '%';
 		} else {
-			eq = '=';
+			conds.push(`${key} = $${key}`);
 			queryobj[key] = val;
 		}
-		condstr = condstr + `${key} ${eq} $${key} and `;
 	}
-	condstr = condstr.slice(0, -4); //slice " and ".len()
+	// 不帶任何參數時省略 where 子句（行為同 getAll），避免產生 "where order by" 的壞 SQL
+	let wherestr = conds.length ? "where " + conds.join(" and ") + " " : "";
 
-	let querystr = 
+	let querystr =
 		"select jobno, subjobno, item, orderno, " +
 		//"FORMAT(purchase_esti_issue_date, 'yyyy-MM-dd') as purchase_esti_issue_date, " +
 		//"FORMAT(purchase_issue_date, 'yyyy-MM-dd') as purchase_issue_date, " +
@@ -94,9 +98,9 @@ async function getBy(req, res) {
 		"replace(convert(nvarchar, cast(amount as money), 1), '.00', '') as amount, " +
 		"formalorderno, currency, jobcommandno, supplier_id, supplier_name, autoupdate, latedelivery2y61 " +
 
-		"from orders " + 
-		"where " + condstr +
-		"order by jobno, subjobno, item asc";	
+		"from orders " +
+		wherestr +
+		"order by jobno, subjobno, item asc";
 
 	const rows = await db.sequelize.query(
 		querystr,

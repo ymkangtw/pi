@@ -24,37 +24,41 @@ async function getAll(req, res) {
 };
 
 async function getBy(req, res) {
-	let eq;
+	// query string 的 key 會直接串進 SQL（值有 bind、key 沒有），只允許 model 宣告的欄位名，防 SQL Injection
+	const allowedKeys = Object.keys(db.monthbyitem.rawAttributes);
 	let queryobj = {};
-	let condstr = "";1
+	let conds = [];
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
-			eq = 'like';
+			conds.push(`m.${key} like $${key}`);
 			queryobj[key] = '%' + val;
 		} else if (val == '' || val == null) {
-			eq = 'like';
+			conds.push(`m.${key} like $${key}`);
 			queryobj[key] = '%';
 		} else {
-			eq = '=';
+			conds.push(`m.${key} = $${key}`);
 			queryobj[key] = val;
 		}
-		condstr = condstr + `${'m.'}${key} ${eq} $${key} and `;
 	}
-	condstr = condstr.slice(0, -4); //slice " and ".len()
+	// 不帶任何參數時省略 where 子句，避免產生壞 SQL
+	let wherestr = conds.length ? "where " + conds.join(" and ") + " " : "";
 /*
 	let querystr =
 		"select jobno, subjobno, yearmonth, jobid, " +
 		"lmn_mh, lmn_dwg, accu_mh, accu_dwg, esti_prg, act_prg " +
-		"from monthbyitem where " + condstr +
+		"from monthbyitem " + wherestr +
 		"order by jobno, subjobno, yearmonth, jobid asc";
 */
 	let querystr =
 		"select m.jobno, m.subjobno, m.yearmonth, m.jobid, t.content, " +
 		"m.lmn_mh, m.lmn_dwg, m.accu_mh, m.accu_dwg, m.esti_prg, m.act_prg " +
 		"from monthbyitem m inner join task t on m.jobid = t.jobid " +
-		"where " + condstr +
+		wherestr +
 		"order by m.jobno, m.subjobno, m.yearmonth, m.jobid asc";
 
 	const rows = await db.sequelize.query(
@@ -73,28 +77,32 @@ async function getBy(req, res) {
 };
 
 async function getYearMonth(req, res) {
-	let eq;
+	// query string 的 key 會直接串進 SQL（值有 bind、key 沒有），只允許 model 宣告的欄位名，防 SQL Injection
+	const allowedKeys = Object.keys(db.monthbyitem.rawAttributes);
 	let queryobj = {};
-	let condstr = "";1
+	let conds = [];
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
-			eq = 'like';
+			conds.push(`${key} like $${key}`);
 			queryobj[key] = '%' + val;
 		} else if (val == '' || val == null) {
-			eq = 'like';
+			conds.push(`${key} like $${key}`);
 			queryobj[key] = '%';
 		} else {
-			eq = '=';
+			conds.push(`${key} = $${key}`);
 			queryobj[key] = val;
 		}
-		condstr = condstr + `${key} ${eq} $${key} and `;
 	}
-	condstr = condstr.slice(0, -4); //slice " and ".len()
+	// 不帶任何參數時省略 where 子句，避免產生壞 SQL
+	let wherestr = conds.length ? "where " + conds.join(" and ") + " " : "";
 	let querystr =
 		"select distinct(yearmonth) " +
-		"from monthbyitem where " + condstr +
+		"from monthbyitem " + wherestr +
 		"order by yearmonth desc";
 
 	const rows = await db.sequelize.query(

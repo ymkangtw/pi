@@ -1,25 +1,29 @@
 const db = require('../models');
 
 async function getBy(req, res) {
-	let eq;
+	// query string 的 key 會直接串進 SQL（值有 bind、key 沒有），只允許 model 宣告的欄位名，防 SQL Injection
+	const allowedKeys = Object.keys(db.leader.rawAttributes);
 	let queryobj = {};
-	let condstr = "";
+	let conds = [];
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
-			eq = 'like';
+			conds.push(`l.${key} like $${key}`);
 			queryobj[key] = '%' + val;
 		} else if (val == '' || val == null) {
-			eq = 'like';
+			conds.push(`l.${key} like $${key}`);
 			queryobj[key] = '%';
 		} else {
-			eq = '=';
+			conds.push(`l.${key} = $${key}`);
 			queryobj[key] = val;
 		}
-		condstr = condstr + `l.${key} ${eq} $${key} and `;
 	}
-	condstr = condstr.slice(0, -4);
+	// 不帶任何參數時省略 where 子句，避免產生壞 SQL
+	let wherestr = conds.length ? "where " + conds.join(" and ") + " " : "";
 	let querystr = 
 		"select l.jobno, l.employeeno, e.name, "+
 		//"FORMAT(l.begindate, 'yyyy-MM-dd') as begindate, " +
@@ -29,7 +33,7 @@ async function getBy(req, res) {
 
 		"l.note " +
 	    "from leader l inner join employee e on l.employeeno = e.employeeno " + 
-		"where " + condstr;
+		wherestr;
 		//console.log(querystr);
 	//console.log(queryobj);
 

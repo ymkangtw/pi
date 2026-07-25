@@ -70,8 +70,8 @@ npm start      # 啟動 server（node app.js）
 | **PM01** | 專案列表（全部/組別）|
 | **PM02** | 專案資料管理（子頁 PD01~PD06：基本資料、內容、人員、設計規劃、進度、報表）|
 | **PM03~05** | 專案搜尋、統計、報表 |
-| **PQ01~03** | 專案查詢、訂單查詢、設計文件查詢 |
-| **PR01~04** | 三層/二層 週報、三層/二層 月報 |
+| **PQ01~03** | 專案查詢、訂單查詢、設計文件查詢（PQ03 目前是「對話測試」實驗頁，非查詢功能）|
+| **PR01~04** | 三層/二層 週報、三層/二層 月報（僅 PR01 已實作，PR02~04 為只有標題的空殼頁）|
 | **PS01~03** | KPI 與統計分析 |
 | **ED01~02** | 設計標準、公安文件 |
 
@@ -134,13 +134,33 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - PM01 的 team/group/member 元件以 `defineExpose` 暴露內部選單值，父頁需透過 `refXxx.value.xxx` 賦值才會改變顯示；team 元件僅 DBDesigner 渲染（`v-if`），賦值前需檢查 `refTeam.value` 存在
 - PD05 請購管理的兩個表格採「點列才編輯」（`row === editingOrder/editingItem` 才渲染編輯元件，其餘列純文字）——整表掛編輯元件會嚴重卡頓（曾實測開啟 2 秒、每鍵擊 400ms）；點表格外離開編輯的 `exitEditing` 必須掛在 `@click.capture`，冒泡階段才判斷時 `event.target` 可能已因進入編輯的重渲染脫離 DOM，`closest('.el-table')` 會誤判成表格外而立刻取消編輯
 - orders/orderitems 的 getBy 回傳單價/總價是 SQL `convert(money)` 格式化的帶逗號字串（顯示值），寫回 DB 前必須以 `pv()` 轉回數字；細項新增/更新/刪除後由 `syncOrderFromItems()` 依細項重算請購案總價與交貨/驗收日期，寫 DB 並同步畫面上的 orders 列
+- **getBy 白名單標準模式**（2026-07-25 全面套用，防 SQL Injection）：`const allowedKeys = Object.keys(db.<model>.rawAttributes);`，名單外的 query key 回 400；條件用 `conds` 陣列收集再 `join(" and ")`，無參數時省略 `where` 子句（行為同 getAll）。變體：isodocs 用 `or` 連接且一般值轉 `%值%` 包含查詢；leaderlist/memberlist 無自己的 model，分別用 `db.leader`/`db.member`；common.ctrl 的 condstr 是死碼（key 從未進 SQL）不需白名單；joblist 未套用（Backlog）
+- **model 欄位宣告必須涵蓋前端查詢用到的所有 DB 欄位**——白名單以 model 為唯一依據，前端查 model 未宣告的欄位會被 400 誤擋（教訓：uteam 的 `visible` 欄位 DB 有、model 沒宣告，PM01/PS01/PS02 都用 `getBy({visible:1})` 篩選團隊，已補宣告）；新增 controller 測試時，測試用的欄位名要先查 model 確認存在
 
-## 待改進事項（Backlog，2026-07-21 盤點）
+## 待改進事項（Backlog，2026-07-21 盤點，2026-07-25 架構評估補充）
 
-依優先順序排列，動工前先與使用者確認：
+架構評估結論（2026-07-25）：分層骨架（前後端分離 SPA + RESTful API、route → ctrl → model、前端 service 層 + Pinia + Composition API、Raw SQL + bind）符合現代主流，**不需要為了潮流重構架構本身**；真正的落差在安全性、錯誤處理、測試與工具鏈等工程品質面，優先序如下。
 
-1. **後端驗證（方案 C，安全性最優先）**：登入不驗密碼、API 無任何身分驗證中介層，任何人可直接呼叫 `/api/...` 讀寫資料（employee 含個資）；登入回傳整筆 employee 過寬
-2. **getBy SQL Injection 風險**：各 controller 的 `getBy` 將 query string 的 key 直接串進 SQL（值有 bind、key 沒有），需加欄位白名單；另 getBy 不帶參數時 `where` 後為空會產生壞 SQL
-3. **便宜除雷**：移除未使用的 vuex（含 webpack alias）與 typescript/ts-loader/tsconfig.json；webpack output 加 `[contenthash]`（目前固定 bundle.js，部署後瀏覽器吃舊快取）（lodash 補 import 已於 2026-07-21 完成）
-4. **排版美工**：導覽列加 `router-link-active` 高亮目前分區；PM02 option-card 顏色改由 `route.path` 推導（棄手動塗色，`sel.hist.link` 可省）（工具 CSS 集中已於 2026-07-21 完成）
-5. **長期**：三套圖表庫（ECharts/Chart.js/D3）收斂為一套；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；axios 加統一錯誤攔截器與 loading 狀態；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404、無統一 error handler）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）
+依優先權排列（排序依據：影響 × 成本），動工前先與使用者確認：
+
+**P1 安全（最優先，影響最大）**
+
+1. **後端驗證（方案 C）**：登入不驗密碼、API 無任何身分驗證中介層，任何人可直接呼叫 `/api/...` 讀寫資料（employee 含個資）；登入回傳整筆 employee 過寬
+2. **getBy SQL Injection 風險**（2026-07-25 已完成 26 個 controller，模式詳見開發注意事項）：僅剩 `joblist.ctrl.js`（跨表彙總查詢、無對應 model，需手寫白名單）尚未處理
+
+**P2 高效益低成本（實際 bug 或幾乎零成本）**
+
+3. **便宜除雷**：webpack output 加 `[contenthash]`（目前固定 bundle.js，**部署後瀏覽器吃舊快取，是實際會發生的 bug**）；移除未使用的 vuex（含 webpack alias）與 typescript/ts-loader/tsconfig.json（lodash 補 import 已於 2026-07-21 完成）
+4. **工程品質標配**：引入 ESLint + Prettier；補最小測試框架——後端 controller 與前端金額計算邏輯（如 PD05 `syncOrderFromItems`）優先；行有餘力再加 CI
+
+**P3 使用者可見的改善（成本低）**
+
+5. **排版美工**：導覽列加 `router-link-active` 高亮目前分區；PM02 option-card 顏色改由 `route.path` 推導（棄手動塗色，`sel.hist.link` 可省）（工具 CSS 集中已於 2026-07-21 完成）
+
+**P4 內部品質（中期，成本中）**
+
+6. **API 現代化**：統一 error handler middleware（Express 5 原生支援 async handler 拋錯，可去除各 ctrl 重複 try/catch）；HTTP 狀態碼修正（驗證失敗 400、DB 錯誤 500，現在一律 404）、回應改 JSON（現在回純文字 'created'/'updated'）；前端共用 axios instance + interceptor 統一錯誤與 loading（不抽象化各 service 的 CRUD 結構，只換掉裸 axios）；REST 慣例調整——資源 ID 進 URL（`PUT /api/orderitems/:id`，現在主鍵放 body）、`/getby`、`/removeall` 動詞端點檢討
+
+**P5 長期（不急，累積到適當時機一次做）**
+
+7. **長期項目**：三套圖表庫（ECharts/Chart.js/D3）收斂為一套；Webpack 遷移 Vite（Vue 生態現行標配，值得但不急）；建立 schema.sql 或 migration 作為資料庫 schema 唯一真相來源（models 宣告名實不符，只剩欄位註解價值）；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）

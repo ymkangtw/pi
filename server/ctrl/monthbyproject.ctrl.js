@@ -26,25 +26,29 @@ async function getAll(req, res) {
 };
 
 async function getBy(req, res) {
-	let eq;
+	// query string 的 key 會直接串進 SQL（值有 bind、key 沒有），只允許 model 宣告的欄位名，防 SQL Injection
+	const allowedKeys = Object.keys(db.monthbyproject.rawAttributes);
 	let queryobj = {};
-	let condstr = "";
+	let conds = [];
 	for(const key in req.query) {
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
 		let val = req.query[key];
 
 		if (val.slice(-1) == '%') {
-			eq = 'like';
+			conds.push(`${key} like $${key}`);
 			queryobj[key] = '%' + val;
 		} else if (val == '' || val == null) {
-			eq = 'like';
+			conds.push(`${key} like $${key}`);
 			queryobj[key] = '%';
 		} else {
-			eq = '=';
+			conds.push(`${key} = $${key}`);
 			queryobj[key] = val;
 		}
-		condstr = condstr + `${key} ${eq} $${key} and `;
 	}
-	condstr = condstr.slice(0, -4); //slice " and ".len()
+	// 不帶任何參數時省略 where 子句，避免產生壞 SQL
+	let wherestr = conds.length ? "where " + conds.join(" and ") + " " : "";
 	let querystr =
 		"select jobno, subjobno, yearmonth, " +
 		"id_lmn_mh, id_lmn_dwg, id_accu_mh, id_accu_dwg, id_esti_prg, id_prg, " +
@@ -58,7 +62,7 @@ async function getBy(req, res) {
 		"plc_lmn_mh, plc_lmn_dwg, plc_accu_mh, plc_accu_dwg, plc_esti_prg, plc_prg, " +
 		"rpt_lmn_mh, rpt_lmn_dwg, rpt_accu_mh, rpt_accu_dwg, rpt_esti_prg, rpt_prg, " +
 		"prg_esti, prg, prg_design_esti, prg_design, ifupdated, monthwork " +
-		"from monthbyproject where " + condstr +
+		"from monthbyproject " + wherestr +
 		"order by jobno, subjobno, yearmonth asc";
 
 	const rows = await db.sequelize.query(

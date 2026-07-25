@@ -42,32 +42,26 @@ async function getBy(req, res) {
 	*/
 	//console.log('query: ' + req.query);
 
-	//let str = req.query.typeid;
-	//console.log(str.slice(-1));
-	let str = req.query.typeid;
-	let eq1 = str.slice(-1) == '%' ? 'like' : '=';
-
-	//console.log(eq, str);
-	let querystr = "select * from equiptype where ";
-	let appendstr = "";
-
-	let eq;
+	// query string 的 key 會直接串進 SQL（值有 bind、key 沒有），只允許 model 宣告的欄位名，防 SQL Injection
+	const allowedKeys = Object.keys(db.equiptype.rawAttributes);
 	let queryobj = {};
+	let conds = [];
 	for(const key in req.query) {
-		eq = req.query[key].slice(-1) == '%' ? 'like' : '=';
-		appendstr = appendstr + `${key} ${eq} :${key} and `;
-		queryobj[key] = req.query[key];
+		if (allowedKeys.indexOf(key) === -1) {
+			return res.status(400).send(`Bad request: unknown field ${key}`);
+		}
+		let val = req.query[key];
+		conds.push(val.slice(-1) == '%' ? `${key} like $${key}` : `${key} = $${key}`);
+		queryobj[key] = val;
 	}
-	querystr = querystr + appendstr.slice(0, -5);
-	console.log(querystr);
-	console.log(queryobj);
+	// 不帶任何參數時省略 where 子句（行為同 getAll），避免產生壞 SQL
+	let wherestr = conds.length ? "where " + conds.join(" and ") : "";
+	let querystr = "select * from equiptype " + wherestr;
 
 	const rows = await db.sequelize.query(
-			//"select * from equiptype where typeid " + eq1 + " :typeid",
 			querystr,
 			{
-				//replacements: { typeid: req.query.typeid },
-				replacements: queryobj,
+				bind: queryobj,
 				type: db.QueryTypes.SELECT
 			}
 		);

@@ -24,7 +24,7 @@ const Options = ref([
 ]);
 const queryCount = ref();
 
-const queryStr = ref();
+const queryStr = ref('');
 //--------------------------------
 // Local Function
 //--------------------------------
