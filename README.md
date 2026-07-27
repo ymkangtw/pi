@@ -31,7 +31,7 @@
 | 項目 | 技術 |
 |------|------|
 | 框架 | Vue.js v3.5.13（Composition API） |
-| 狀態管理 | Pinia v3.0.3 + Vuex v4.1.0 |
+| 狀態管理 | Pinia v3.0.3 |
 | 路由 | Vue Router v4.6.3（Lazy Loading） |
 | UI 元件庫 | Element Plus v2.11.5 |
 | 圖表 | ECharts v6.0.0、Chart.js v4.5.1、D3.js v7.9.0 |

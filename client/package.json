@@ -42,7 +42,6 @@
     "vue-echarts": "^8.0.1",
     "vue-router": "^4.6.3",
     "vue3-dropzone": "^2.2.1",
-    "vuedraggable": "^4.1.0",
-    "vuex": "^4.1.0"
+    "vuedraggable": "^4.1.0"
   }
 }

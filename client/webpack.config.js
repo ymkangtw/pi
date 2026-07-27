@@ -66,8 +66,7 @@ module.exports = (env, argv) => {
         resolve: {
             alias: {
                 '@': path.join(__dirname, 'src'),
-                'vue': '@vue/runtime-dom',
-                'vuex': 'vuex/dist/vuex.esm-bundler'
+                'vue': '@vue/runtime-dom'
             },
             extensions: ['.ts', '.js', '.vue', '.json']
         },

@@ -13,7 +13,7 @@
 
 ### 前端 (client/)
 - Vue.js v3.5.13 (Composition API), Vue Router v4.6.3
-- 狀態管理：Pinia v3.0.3 + Vuex v4.1.0
+- 狀態管理：Pinia v3.0.3
 - UI：Element Plus v2.11.5
 - 圖表：ECharts v6.0.0, Chart.js v4.5.1, D3.js v7.9.0
 - PDF：jsPDF (含繁體中文字型 NotoSansTC)
@@ -127,6 +127,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - 部署時 Express 靜態服務 `client/dist/` 作為前端入口，`D:\DOC\` 提供靜態文件
 - SPA 深層路徑（如 `/PM01`）重新整理由 `app.js` 的 fallback 路由（RegExp 排除 `/api`）回傳 `index.html`，交前端 Vue Router 處理；Express 5 不支援 `app.get('*')`，需改用 RegExp 或具名萬用字元；dev 模式（webpack-dev-server）則由 `devServer.historyApiFallback: true` 處理
 - **建置檔名與快取**（2026-07-25 導入）：production build 的 `output.filename` / `output.chunkFilename` 帶 `[contenthash:8]`（`bundle.xxxxxxxx.js`、`[id].bundle.xxxxxxxx.js`），內容沒變 hash 就不變（webpack 5 production 預設 deterministic ids），改一支 view 只有該 chunk 與主 bundle 換檔名；**development 必須維持固定檔名**，HMR 與 contenthash 不相容會直接編譯失敗，`HotModuleReplacementPlugin` 也因此改為僅 development 掛載。配套是 `app.js` 讓 `index.html` 回 `Cache-Control: no-cache`（express.static 的 `setHeaders`、`app.get('/')`、SPA fallback 三處都要設，後兩者繞過 static），否則瀏覽器快取住舊 html、裡面寫的還是舊 hash，等於沒改。註解類修改重 build 後 hash 不變是正常的——production 壓縮後產出內容相同
+- **跑 `npm run dev` 會清空 `client/dist/`**：`CleanWebpackPlugin` 在 dev server 啟動時就執行清除，但 webpack-dev-server 的產出只存在記憶體（不寫磁碟），所以 dev server 一停，`dist` 就是空的——看起來像部署檔還在，實際已無。開發完要部署或用 port 80 實跑前，務必重新 `npm run build`
 - 使用 lodash 的檔案一律明確 `import _ from 'lodash'`，不可依賴 webpack AMD 模擬讓 lodash 掛上 `window._` 的副作用（2026-07-21 已全數補齊）
 - 通用工具 CSS（`.ma2/.ma4/.ma8/.ma16`、`.mv2/.mv4/.mv8`、`.fstart/.fcenter/.fend`、`.item-align`、`.shadow`）集中於 `assets/style.css`，元件內不再重複定義；同名但內容不同者（PD04 的 `.fstart`、PM01 與 App.vue 的 `.item-align`）保留在元件內，以 scoped 較高特異度覆蓋全域
 - `el-col` 上掛 `.fstart/.fcenter/.fend` 會被 Element Plus 的 `.el-col-N { display: block }` 蓋掉（bundle 排序在 style.css 之後），style.css 已用 `.el-col.fstart` 等較高特異度規則還原 flex；需要「保留上下間距但右緣要對齊容器」時用 `.mv*`（垂直 margin），不要用 `.ma*`（四邊 margin 會造成水平內縮/偏移）
@@ -139,30 +140,46 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - **model 欄位宣告必須涵蓋前端查詢用到的所有 DB 欄位**——白名單以 model 為唯一依據，前端查 model 未宣告的欄位會被 400 誤擋（教訓：uteam 的 `visible` 欄位 DB 有、model 沒宣告，PM01/PS01/PS02 都用 `getBy({visible:1})` 篩選團隊，已補宣告）；新增 controller 測試時，測試用的欄位名要先查 model 確認存在
 - PDF 報表（PD05 工程月報 / 進度管制表 / 專案報告）由 `util.service.js` 以 **jsPDF 純前端產生**（含 NotoSansTC 中文字型、甘特圖），最後 `doc.save()` 建 Blob 觸發下載，不經後端；**用 Playwright 等自動化瀏覽器測試時，下載檔會落在 CDP 指定目錄並以隨機 GUID 命名**（真實檔名改由 `downloadWillBegin` 事件的 suggestedFilename 傳遞），看起來像「功能無效」，實際檔案完好——腳本要保留檔名須用 `download.suggestedFilename()` + `saveAs()`；此現象與 `--no-sandbox` 無關，一般瀏覽器操作會正常存成 `${jobno}-${jobname}.pdf`
 
-## 待改進事項（Backlog，2026-07-21 盤點，2026-07-25 架構評估補充）
+## 待改進事項（Backlog，2026-07-21 盤點，2026-07-25 架構評估補充，2026-07-27 改為表格）
 
 架構評估結論（2026-07-25）：分層骨架（前後端分離 SPA + RESTful API、route → ctrl → model、前端 service 層 + Pinia + Composition API、Raw SQL + bind）符合現代主流，**不需要為了潮流重構架構本身**；真正的落差在安全性、錯誤處理、測試與工具鏈等工程品質面，優先序如下。
 
-依優先權排列（排序依據：影響 × 成本），動工前先與使用者確認：
+依優先權排列（排序依據：影響 × 成本），動工前先與使用者確認。狀態：✅ 完成 / ⬜ 未做。
 
-**P1 安全（最優先，影響最大）**
-
-1. **後端驗證（方案 C）**：登入不驗密碼、API 無任何身分驗證中介層，任何人可直接呼叫 `/api/...` 讀寫資料（employee 含個資）；登入回傳整筆 employee 過寬
-2. **getBy SQL Injection 風險**（2026-07-25 全部完成，模式詳見開發注意事項）：28 個 controller 已加白名單（含 joblist 7 個函式、equiptype）；equip.ctrl 走 Sequelize model API 本來就安全；equip/equiptype 是前端無呼叫的孤兒 API，可考慮移除 route（見 P5）
-
-**P2 高效益低成本（實際 bug 或幾乎零成本）**
-
-3. **便宜除雷**：移除未使用的 vuex（含 webpack alias）與 typescript/ts-loader/tsconfig.json（lodash 補 import 已於 2026-07-21 完成；webpack output `[contenthash]` + index.html no-cache 已於 2026-07-25 完成，詳見開發注意事項）
-4. **工程品質標配**：引入 ESLint + Prettier；補最小測試框架——後端 controller 與前端金額計算邏輯（如 PD05 `syncOrderFromItems`）優先；行有餘力再加 CI
-
-**P3 使用者可見的改善（成本低）**
-
-5. **排版美工**：導覽列加 `router-link-active` 高亮目前分區；PM02 option-card 顏色改由 `route.path` 推導（棄手動塗色，`sel.hist.link` 可省）（工具 CSS 集中已於 2026-07-21 完成）
-
-**P4 內部品質（中期，成本中）**
-
-6. **API 現代化**：統一 error handler middleware（Express 5 原生支援 async handler 拋錯，可去除各 ctrl 重複 try/catch）；HTTP 狀態碼修正（驗證失敗 400、DB 錯誤 500，現在一律 404）、回應改 JSON（現在回純文字 'created'/'updated'）；前端共用 axios instance + interceptor 統一錯誤與 loading（不抽象化各 service 的 CRUD 結構，只換掉裸 axios）；REST 慣例調整——資源 ID 進 URL（`PUT /api/orderitems/:id`，現在主鍵放 body）、`/getby`、`/removeall` 動詞端點檢討
-
-**P5 長期（不急，累積到適當時機一次做）**
-
-7. **長期項目**：帶 hash 的靜態檔可再給 `max-age=31536000, immutable` 免去每次開頁 40 幾個 304 往返（須依檔名 pattern 分流，`pic/` 是原名複製沒有 hash，一起吃長快取會導致換圖無效）；三套圖表庫（ECharts/Chart.js/D3）收斂為一套；Webpack 遷移 Vite（Vue 生態現行標配，值得但不急）；建立 schema.sql 或 migration 作為資料庫 schema 唯一真相來源（models 宣告名實不符，只剩欄位註解價值）；team/group/member 的 defineExpose 模式改 v-model；char 欄位尾端空白改在 SQL 端 rtrim（棄前端 trimJSON）；controller 錯誤處理修正（`if (rows)` 永遠 true、create 失敗誤回 404）；body-parser 改 express 內建；`d:\DOC\` 路徑移至 .env；清 package_bak.json 與大量註解死碼；密碼欄位未驗證卻顯示（誤導）；移除前端無呼叫的孤兒 API route（equip、equiptype，front-end 無 service 或 service 無人 import）
+| 編號 | 項目 | 狀態 | 完成日 | 說明 |
+|---|---|---|---|---|
+| **P1 安全（最優先，影響最大）** |||||
+| P1-1 | 後端驗證（方案 C） | ⬜ | | 登入不驗密碼、API 無任何身分驗證中介層，任何人可直接呼叫 `/api/...` 讀寫資料（employee 含個資）；登入回傳整筆 employee 過寬 |
+| P1-2 | getBy SQL Injection 白名單 | ✅ | 2026-07-25 | 28 個 controller 已加白名單（含 joblist 7 個函式、equiptype）；equip.ctrl 走 Sequelize model API 本來就安全。模式詳見開發注意事項 |
+| **P2 高效益低成本（實際 bug 或幾乎零成本）** |||||
+| P2-1 | lodash 明確 import | ✅ | 2026-07-21 | 不再依賴 webpack AMD 模擬讓 lodash 掛上 `window._` 的副作用 |
+| P2-2 | webpack `[contenthash]` + index.html no-cache | ✅ | 2026-07-25 | 解決部署後瀏覽器吃舊快取。詳見開發注意事項 |
+| P2-3 | 移除未使用的 vuex | ✅ | 2026-07-27 | 連同 webpack alias 一併移除（含相依共 18 個套件）；狀態管理只有 Pinia 的 `stores/user.js`、`stores/selection.js`。移除前後 production build 產出位元組完全相同（`bundle.08f33870.js`，54 檔 18,168,887 bytes），證明從未被打包 |
+| P2-4 | 移除 typescript / ts-loader / tsconfig.json | ⬜ | | 專案無 `.ts` 檔，webpack 的 `.tsx?` rule 空轉 |
+| P2-5 | 引入 ESLint + Prettier | ⬜ | | |
+| P2-6 | 補最小測試框架 | ⬜ | | 後端 controller 與前端金額計算邏輯（如 PD05 `syncOrderFromItems`）優先 |
+| P2-7 | CI | ⬜ | | 行有餘力再加 |
+| **P3 使用者可見的改善（成本低）** |||||
+| P3-1 | 通用工具 CSS 集中 | ✅ | 2026-07-21 | 集中於 `assets/style.css`，詳見開發注意事項 |
+| P3-2 | 導覽列高亮目前分區 | ⬜ | | 加 `router-link-active` |
+| P3-3 | PM02 option-card 顏色改由 `route.path` 推導 | ⬜ | | 棄手動塗色，`sel.hist.link` 可省 |
+| **P4 內部品質（中期，成本中）** |||||
+| P4-1 | 統一 error handler middleware | ⬜ | | Express 5 原生支援 async handler 拋錯，可去除各 ctrl 重複 try/catch |
+| P4-2 | HTTP 狀態碼修正、回應改 JSON | ⬜ | | 驗證失敗 400、DB 錯誤 500（現在一律 404）；現在回純文字 `'created'`/`'updated'` |
+| P4-3 | 前端共用 axios instance + interceptor | ⬜ | | 統一錯誤與 loading；不抽象化各 service 的 CRUD 結構，只換掉裸 axios |
+| P4-4 | REST 慣例調整 | ⬜ | | 資源 ID 進 URL（`PUT /api/orderitems/:id`，現在主鍵放 body）；`/getby`、`/removeall` 動詞端點檢討 |
+| **P5 長期（不急，累積到適當時機一次做）** |||||
+| P5-1 | hash 靜態檔給 `max-age=31536000, immutable` | ⬜ | | 免去每次開頁 40 幾個 304 往返；須依檔名 pattern 分流，`pic/` 是原名複製沒有 hash，一起吃長快取會導致換圖無效 |
+| P5-2 | 三套圖表庫收斂為一套 | ⬜ | | ECharts / Chart.js / D3 |
+| P5-3 | Webpack 遷移 Vite | ⬜ | | Vue 生態現行標配，值得但不急 |
+| P5-4 | 建立 schema.sql 或 migration | ⬜ | | 作為資料庫 schema 唯一真相來源；models 宣告名實不符，只剩欄位註解價值 |
+| P5-5 | team/group/member 的 defineExpose 改 v-model | ⬜ | | 值住在子元件內，父層靠 `defineExpose` + `ref` 從外面改子元件內部變數（`refGroup.value.sGroup = 'ME'`）。副作用：父層讀值要反向鑽（`refGroup.value.sGroup`）；子元件未掛載就賦值會炸（`team` 因 `v-if` 需加 `if (refTeam.value)` 防呆，PS01 索性改 `v-show` 硬渲染）；賦值不觸發 `onChange`，設值後要手動補呼叫處理函式；整個子元件實例被當 prop 傳給 `cbxmember`。改法：子元件改 `defineModel()`、父層 `<group v-model="sGroup" :param="groupList" />`，狀態回歸父層，`defineExpose` 與 `ref="refGroup"` 可拿掉（`@onChange` 保留，有些邏輯是值變了去打 API）。涉及 3 元件 + 5 個 view（PM01/PS01/PS02/PS03/PR01），需逐頁回歸測試，故列 P5 |
+| P5-6 | char 欄位尾端空白改在 SQL 端 rtrim | ⬜ | | 棄前端 trimJSON |
+| P5-7 | controller 錯誤處理修正 | ⬜ | | `if (rows)` 永遠 true、create 失敗誤回 404 |
+| P5-8 | body-parser 改 express 內建 | ⬜ | | |
+| P5-9 | `d:\DOC\` 路徑移至 .env | ⬜ | | |
+| P5-10 | 清 package_bak.json 與大量註解死碼 | ⬜ | | |
+| P5-11 | 密碼欄位未驗證卻顯示（誤導） | ⬜ | | 與 P1-1 一起處理較合適 |
+| P5-12 | 移除孤兒 API route（equip、equiptype） | ⬜ | | 前端無 service 或 service 無人 import |
+| P5-13 | joblist 無參數會產生壞 SQL | ⬜ | | 條件全空時組出 `where  and b.status...`；前端目前都會帶參數所以沒踩到 |
+| P5-14 | getBy 收到物件型態參數會 500 | ⬜ | | `?key[sub]=x` 會讓 val 變物件，bind 參數炸掉；應在白名單檢查時一併擋掉非字串值 |
