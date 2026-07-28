@@ -162,6 +162,8 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 | P2-5 | 引入 ESLint + Prettier | ⬜ | | |
 | P2-6 | 補最小測試框架 | ⬜ | | 後端 controller 與前端金額計算邏輯（如 PD05 `syncOrderFromItems`）優先 |
 | P2-7 | CI | ⬜ | | 行有餘力再加 |
+| P2-8 | `package-lock.json` 納入版控 | ⬜ | | 目前被 `.gitignore` 忽略，53 個直接相依全用 `^` 範圍，別人 clone 後 `npm install` 裝到的不是同一組版本——「build 不過」多半源自此，比 Node 版本嚴重。順帶刪除 `client/package-lock.json`（2026-03 殘留，workspaces 專案不該有子層 lock） |
+| P2-9 | 記錄 Node 版本需求 | ⬜ | | 目前 `.nvmrc`／`.node-version`／`engines`／CI 全都沒有（2026-07-28 盤點）。實測環境 Node v22.20.0 + npm 10.9.3；由已安裝套件反推下限為 Node ≥ 18，但 minimatch 等宣告 `18 \|\| 20 \|\| >=22`，奇數非 LTS 版不支援。建議根 package.json 加 `engines`（`^18.12 \|\| ^20.9 \|\| ^22.11 \|\| ^24`）＋ `.nvmrc`；要強制擋則另加 `.npmrc` 的 `engine-strict=true` |
 | **P3 使用者可見的改善（成本低）** |||||
 | P3-1 | 通用工具 CSS 集中 | ✅ | 2026-07-21 | 集中於 `assets/style.css`，詳見開發注意事項 |
 | P3-2 | 導覽列高亮目前分區 | ⬜ | | 加 `router-link-active` |
