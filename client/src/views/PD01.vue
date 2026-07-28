@@ -532,6 +532,13 @@ const p = (value) => {
                             </span>
                             <dlgdrawingno ref="refDlgdwgno" @closeDialog="closeDialogDwg"/>
                         </div>
+                        <div class="item-align ma4">
+                            <span class="label ma2">請購序號規則</span>
+                            <span class="value ma2">
+                                <el-input v-model="b.serialnorule" :disabled="user?.titleid != 'DBDesigner'"
+                                    placeholder="如 D2R75##（#為流水碼），空白=民國年+單位碼+3碼" />
+                            </span>
+                        </div>
 
 
                         <div class="item-align ma4">

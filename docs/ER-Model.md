@@ -45,7 +45,7 @@ erDiagram
     estibyproject {
         string jobno PK,FK "NVARCHAR(13)"
         int subjobno PK "邏輯複合主鍵"
-        int id_esti_mh "10 學科各有 mh/dwg/起迄日/wt/type 共約 80 欄(略)"
+        int id_esti_mh "10 個工作項目各有 mh/dwg/起迄日/wt/type 共約 80 欄(略)"
         float id_wt
         string id_type "NVARCHAR(10)"
         string estiprogresstext "NVARCHAR(2048)"
@@ -215,7 +215,7 @@ erDiagram
         string jobno PK,FK "NVARCHAR(13)"
         int subjobno PK
         string yearmonth PK "NVARCHAR(6)"
-        float id_lmn_mh "10 學科各有 lmn/accu×mh/dwg+prg 共約 60 欄(略)"
+        float id_lmn_mh "10 個工作項目各有 lmn/accu×mh/dwg+prg 共約 60 欄(略)"
         float prg "彙總進度×4(略)"
         bool ifupdated
         text monthwork "NVARCHAR(MAX)"

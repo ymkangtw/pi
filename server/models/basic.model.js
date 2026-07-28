@@ -44,7 +44,8 @@ module.exports = (sequelize, DataTypes) => {
         budgety6turnkey:    { type: DataTypes.INTEGER },
         techfield:          { type: DataTypes.INTEGER },
         ownerdept:          { type: DataTypes.STRING(32) },
-        ownername:          { type: DataTypes.STRING(32) }
+        ownername:          { type: DataTypes.STRING(32) },
+        serialnorule:       { type: DataTypes.STRING(10) }  // 請購序號遮罩，如 D2R75##（#為流水碼）；空=走年度+單位碼+3碼
     }, {
         //tableName: 'basic',
         freezeTableName: true, //model name == table name

@@ -97,9 +97,9 @@ Common Controller 特殊端點：KPI、採購金額（請購/訂購/交貨/驗�
 - **報表**：weeklyreportbyprj, monthreportbyprj, weeklyworkbyproject, monthprgbyprojecttotal
 - **查找表**：equiptype, equip, servicevalue, factorycode
 
-ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補充：joblist 只有 route/ctrl 沒有 model（跨表彙總查詢）；`overtime` 資料表存在於 DB 但無 model 檔（common.ctrl.js 加班統計直接以 Raw SQL 存取）；model 宣告的 primaryKey 大多與邏輯主鍵不符，不可依 model 宣告理解資料結構。
+ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補充：`basic.serialnorule` 為 2026-07-28 新增欄位（請購序號遮罩，詳見開發注意事項），ER-Model.md 尚未同步；joblist 只有 route/ctrl 沒有 model（跨表彙總查詢）；`overtime` 資料表存在於 DB 但無 model 檔（common.ctrl.js 加班統計直接以 Raw SQL 存取）；model 宣告的 primaryKey 大多與邏輯主鍵不符，不可依 model 宣告理解資料結構。
 
-## 學科代碼
+## 工作項目代碼
 
 | 代碼 | 含義 |
 |------|------|
@@ -135,6 +135,9 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - dev 模式的錯誤覆蓋層以 `devServer.client.overlay.runtimeErrors` 過濾掉 `ResizeObserver loop` 良性警告（Element Plus 元件重排常觸發），其餘 runtime error 照常顯示；修改 webpack.config.js 後需重啟 `npm run dev` 才生效
 - PM01 的 team/group/member 元件以 `defineExpose` 暴露內部選單值，父頁需透過 `refXxx.value.xxx` 賦值才會改變顯示；team 元件僅 DBDesigner 渲染（`v-if`），賦值前需檢查 `refTeam.value` 存在
 - PD05 請購管理的兩個表格採「點列才編輯」（`row === editingOrder/editingItem` 才渲染編輯元件，其餘列純文字）——整表掛編輯元件會嚴重卡頓（曾實測開啟 2 秒、每鍵擊 400ms）；點表格外離開編輯的 `exitEditing` 必須掛在 `@click.capture`，冒泡階段才判斷時 `event.target` 可能已因進入編輯的重渲染脫離 DOM，`closest('.el-table')` 會誤判成表格外而立刻取消編輯
+- **請購序號規則**（2026-07-28 導入）：`basic.serialnorule`（nvarchar(10)）是**遮罩**，`#` 標示流水碼位置且必須連續置尾（1~5 個），如肆號高爐的 `D2R75##` → 前綴 `D2R75`、流水碼 2 碼；空值走既有「民國年+單位碼+3 碼」（如 `115S001`，依**登入者** `ofgroup1` 決定單位碼，故不可用來表達工程專屬規則）。流水碼序列以寬度 2 為例是 `01`~`99` → `0A`~`9Z` → `AA`~`ZZ`（共 1035 個），字母由右往左逐位侵蝕；**取最大號必須換算成 index 比大小，不可用字串比**——ASCII 裡 `'99' > '0A'`，但 `0A` 才是 99 的下一號，用字串比會算出 `100` 並無限卡住。3 碼以上的進位方式是推論，尚未經工程部門確認。相關程式集中在 `PD05.vue` 的 `parseSerialRule`/`serialIndexToCode`/`serialCodeToIndex`/`getNewSerailNo`，規則在 PD01「其他」頁籤維護（限 DBDesigner）
+- 承上，序號取 max 依賴兩件事：(a) `orders.y6tserialno` 是 **char(12)**，回傳帶尾端空白，靠前端 `trimJSON` 清掉；若日後照 P5-6 改用 SQL 端 rtrim，**orders 這條路徑必須一起改**，否則 `'02     '` 長度不符會解析失敗回 0，下一號算成 `01` 與既有號重複且畫面看不出來。(b) 後端 getBy 的 `like` 是前後包 `%`（傳 `D2R75%` 實際查 `%D2R75%`，是「包含」不是「開頭」），故迴圈內另以 `indexOf(prefix) != 0` 濾掉誤撈
+- 「請購管理」按鈕只在該工程有 `jobtype='P'` 的任務、且 PD05 選了**特定成員**（非「全案」）時才顯示（`PD05.vue` 的 `v-if="item.jobtype == 'P'"`）；沒有請購任務的工程即使已有請購案，UI 上也到不了新增購案畫面
 - orders/orderitems 的 getBy 回傳單價/總價是 SQL `convert(money)` 格式化的帶逗號字串（顯示值），寫回 DB 前必須以 `pv()` 轉回數字；細項新增/更新/刪除後由 `syncOrderFromItems()` 依細項重算請購案總價與交貨/驗收日期，寫 DB 並同步畫面上的 orders 列
 - **getBy 白名單標準模式**（2026-07-25 全面套用，防 SQL Injection）：`const allowedKeys = Object.keys(db.<model>.rawAttributes);`，名單外的 query key 回 400；條件用 `conds` 陣列收集再 `join(" and ")`，無參數時省略 `where` 子句（行為同 getAll）。變體：isodocs 用 `or` 連接且一般值轉 `%值%` 包含查詢；leaderlist/memberlist 無自己的 model，分別用 `db.leader`/`db.member`；common.ctrl 的 condstr 是死碼（key 從未進 SQL）不需白名單；joblist 因 SQL 含多層 join/subquery，採**只插入白名單檢查、不動 condstr 與 SQL** 的保守修法（條件掛 employee 別名 `e.` 的 5 個函式用 `db.employee`，Idreport/Fnreport 用 `db.basic`），改動前後以真實參數逐位元組比對回應驗證
 - **model 欄位宣告必須涵蓋前端查詢用到的所有 DB 欄位**——白名單以 model 為唯一依據，前端查 model 未宣告的欄位會被 400 誤擋（教訓：uteam 的 `visible` 欄位 DB 有、model 沒宣告，PM01/PS01/PS02 都用 `getBy({visible:1})` 篩選團隊，已補宣告）；新增 controller 測試時，測試用的欄位名要先查 model 確認存在
@@ -183,3 +186,4 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 | P5-12 | 移除孤兒 API route（equip、equiptype） | ⬜ | | 前端無 service 或 service 無人 import |
 | P5-13 | joblist 無參數會產生壞 SQL | ⬜ | | 條件全空時組出 `where  and b.status...`；前端目前都會帶參數所以沒踩到 |
 | P5-14 | getBy 收到物件型態參數會 500 | ⬜ | | `?key[sub]=x` 會讓 val 變物件，bind 參數炸掉；應在白名單檢查時一併擋掉非字串值 |
+| P5-15 | PD05 新增購案的 `neworder` 從不重置 | ⬜ | | 開啟對話框只做 `addOrdersDlg = true`，欄位沿用上一筆的值（2026-07-28 實測確認）；`y6tserialno` 因 `addOrders` 無條件覆寫而無影響，但其他欄位可能被誤存 |

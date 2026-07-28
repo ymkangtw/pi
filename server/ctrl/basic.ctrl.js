@@ -5,7 +5,7 @@ const db = require('../models');
 async function getAll(req, res) {
 	let querystr =
 		"select jobno, projectno, jobname, appdept, approvalno, jobtype, joborderno, size, "+
-		"status, idealreportno, finalreportno, techfield, ownerdept, ownername, " +
+		"status, idealreportno, finalreportno, techfield, ownerdept, ownername, serialnorule, " +
 		"designtype, budgetyearst, budgetyearsp, " +
 		"replace(convert(nvarchar, cast(totalbudget as money), 1), '.00', '') as totalbudget, " +
 		"replace(convert(nvarchar, cast(electricalbudget as money), 1), '.00', '') as electricalbudget, " +
@@ -63,7 +63,7 @@ async function getBy(req, res) {
 	let wherestr = conds.length ? "where " + conds.join(" and ") + " " : "";
 	let querystr =
 		"select jobno, projectno, jobname, appdept, approvalno, jobtype, joborderno, size, " +
-		"status, idealreportno, finalreportno, techfield, ownerdept, ownername, " +
+		"status, idealreportno, finalreportno, techfield, ownerdept, ownername, serialnorule, " +
 		"designtype, budgetyearst, budgetyearsp, " +
 		"replace(convert(nvarchar, cast(totalbudget as money), 1), '.00', '') as totalbudget, " +
 		"replace(convert(nvarchar, cast(electricalbudget as money), 1), '.00', '') as electricalbudget, " +

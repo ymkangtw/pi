@@ -1408,8 +1408,80 @@ const getPurchaseTask = async () => {
     }    
 };
 
+// basic.serialnorule 是遮罩：# 標示流水碼位置且必須連續置尾，如 D2R75## → 前綴 D2R75、流水碼 2 碼
+const parseSerialRule = (rule) => {
+    let m = /^([^#]*)(#{1,5})$/.exec(rule ?? '');
+    if (!m) return null;
+    return { prefix: m[1], width: m[2].length };
+};
+
+// 流水碼序列（寬度 2 為例）：01~99 → 0A~9Z → AA~ZZ，共 1035 個，字母由右往左逐位侵蝕
+// 3 碼以上的進位方式為推論，尚未經工程部門確認
+const serialIndexToCode = (idx, width) => {
+    let digitsMax = Math.pow(10, width) - 1;
+    if (idx >= 1 && idx <= digitsMax) {
+        return String(idx).padStart(width, '0');
+    }
+    let base = digitsMax + 1;
+    for (let k = 1; k <= width; k++) {          // k = 尾端字母碼位數
+        let letterMax = Math.pow(26, k);
+        let size = Math.pow(10, width - k) * letterMax;
+        if (idx < base + size) {
+            let n = idx - base;
+            // width - k 為 0 時不可用 padStart(0)：String(0).padStart(0) 會回 '0' 而非空字串
+            let code = width - k > 0 ? String(Math.floor(n / letterMax)).padStart(width - k, '0') : '';
+            let rest = n % letterMax;
+            for (let i = k - 1; i >= 0; i--) {
+                code += String.fromCharCode(65 + Math.floor(rest / Math.pow(26, i)) % 26);
+            }
+            return code;
+        }
+        base += size;
+    }
+    return '';   // 用盡
+};
+
+const serialCodeToIndex = (code, width) => {
+    if (!code || code.length != width) return 0;
+    let k = 0;
+    while (k < width && code[width - 1 - k] >= 'A' && code[width - 1 - k] <= 'Z') k++;
+    for (let i = 0; i < width - k; i++) {
+        if (code[i] < '0' || code[i] > '9') return 0;   // 前段必須全數字
+    }
+    if (k == 0) {
+        let n = parseInt(code, 10);
+        return n >= 1 ? n : 0;                          // 全 0 不使用
+    }
+    let base = Math.pow(10, width);
+    for (let j = 1; j < k; j++) {
+        base += Math.pow(10, width - j) * Math.pow(26, j);
+    }
+    let head = width - k > 0 ? parseInt(code.slice(0, width - k), 10) : 0;
+    let rest = 0;
+    for (let i = 0; i < k; i++) {
+        rest = rest * 26 + (code.charCodeAt(width - k + i) - 65);
+    }
+    return base + head * Math.pow(26, k) + rest;
+};
+
 const getNewSerailNo = async (ordercategory) => {
-    
+
+    // 工程有自訂序號規則（basic.serialnorule，如肆號高爐 D2R75##）時走專屬序列
+    let sr = parseSerialRule(b.value?.serialnorule);
+    if (sr) {
+        let torders = await ordersSvc.getBy({ y6tserialno: `${sr.prefix}%` });
+        let maxidx = 0;
+        for (let it of torders) {
+            // 後端的 like 是前後包 %（%D2R75%），是「包含」不是「開頭」，要自己確認
+            if (!it.y6tserialno || it.y6tserialno.indexOf(sr.prefix) != 0) continue;
+            // 一律換算成 index 比大小，不可用字串比：ASCII 裡 '99' > '0A'，但 0A 才是 99 的下一號
+            let idx = serialCodeToIndex(it.y6tserialno.slice(sr.prefix.length), sr.width);
+            if (idx > maxidx) maxidx = idx;
+        }
+        let newcode = serialIndexToCode(maxidx + 1, sr.width);
+        return newcode == '' ? '' : `${sr.prefix}${newcode}`;
+    }
+
     //let group = user.ofgroup1.slice(-1);
     let team = user.ofgroup1.slice(0, 3);
     let code = ''
@@ -1491,6 +1563,10 @@ const addOrders = async (jobno, subjobno) => {
     neworder.value.receivecheck_esti_date = neworder.value.receivecheck_esti_date != "" ? neworder.value.receivecheck_esti_date : null;
     neworder.value.receivecheck_date = neworder.value.receivecheck_date != "" ? neworder.value.receivecheck_date : null;
     neworder.value.y6tserialno = await getNewSerailNo(neworder.value.category);
+    if (neworder.value.y6tserialno == '') {
+        ElMessage({ message: '請購序號已用盡，請洽系統管理者', type: 'error' });
+        return;
+    }
     neworder.value.estimateamount = pv(neworder.value.estimateamount);
     neworder.value.amount = pv(neworder.value.amount);
     neworder.value.latedelivery2y61 = null;
@@ -3223,7 +3299,7 @@ const test = (item) => {
                             <div class="item-align ma4">
                                 <span class="label-m ma2">請購序號</span>
                                 <span class="value-m ma2">
-                                    <el-input v-model="neworder.y6tserialno" placeholder="序號自動產生" />
+                                    <el-input v-model="neworder.y6tserialno" disabled placeholder="序號自動產生" />
                                 </span>
                             </div>
                             <div class="item-align ma4">
