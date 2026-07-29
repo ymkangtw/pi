@@ -34,23 +34,6 @@ module.exports = (env, argv) => {
                     //use: ['vue-loader']
                 },
                 {
-                    test: /\.tsx?$/,
-                    loader: 'ts-loader',
-                    exclude: /node_modules/,
-                    options: {
-                        appendTsSuffixTo: [/\.vue$/]
-                    }
-                    /*
-                    use: [{
-                            loader: 'ts-loader',
-                            options: {
-                                appendTsSuffixTo: [/\.vue$/],
-                            }
-                    }],                    
-                    exclude: /node_modules/
-                    */
-                },
-                {
                     test: /\.scss|\.css$/,
                     use: ['vue-style-loader', 'css-loader']
                 },
@@ -68,7 +51,7 @@ module.exports = (env, argv) => {
                 '@': path.join(__dirname, 'src'),
                 'vue': '@vue/runtime-dom'
             },
-            extensions: ['.ts', '.js', '.vue', '.json']
+            extensions: ['.js', '.vue', '.json']
         },
         plugins: [
             // HMR 只在開發模式需要；production 掛著會讓 contenthash 無法使用
