@@ -25,7 +25,7 @@
 pi/
 ├── package.json                     # npm workspaces root (client, server)
 ├── package-lock.json                # 根 lock（已納入版控，全專案唯一一份，見 Backlog P2-8）
-├── node_modules/                    # 只有 concurrently + nodemon 及其相依（7 MB）
+├── node_modules/                    # 全專案唯一一份（326 MB／42,701 檔，2026-07-29 重裝 hoist）
 │   ├── piapp -> client/             # workspace junction（名稱取自 client/package.json 的 name）
 │   └── piserv -> server/            # workspace junction，npm run -w 靠它定位
 ├── client/                          # 前端 Vue 3 SPA
@@ -43,7 +43,6 @@ pi/
 │   │   ├── controller/              # 狀態機控制器（FSM）
 │   │   ├── assets/                  # 靜態資源（CSS、字型）
 │   │   └── pic/                     # 圖片/圖示
-│   ├── node_modules/                # 253 MB（現況未 hoist，見 Backlog P2-10）
 │   ├── dist/                        # Webpack 打包輸出
 │   └── webpack.config.js            # Webpack 設定（含 dev proxy）
 ├── server/                          # 後端 Express.js API
@@ -51,7 +50,6 @@ pi/
 │   ├── routes/                      # 路由定義（index.js 自動載入同目錄 *.route.js）
 │   ├── ctrl/                        # 32 個控制器
 │   ├── models/                      # 26 個資料模型（Sequelize, dotenv 載入 .env）
-│   ├── node_modules/                # 131 MB（現況未 hoist，見 Backlog P2-10）
 │   ├── .env                         # DB 環境變數（不進版控）
 │   └── .env.example                 # .env 範本
 ├── docs/                            # 專案文件
@@ -135,7 +133,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 - SPA 深層路徑（如 `/PM01`）重新整理由 `app.js` 的 fallback 路由（RegExp 排除 `/api`）回傳 `index.html`，交前端 Vue Router 處理；Express 5 不支援 `app.get('*')`，需改用 RegExp 或具名萬用字元；dev 模式（webpack-dev-server）則由 `devServer.historyApiFallback: true` 處理
 - **建置檔名與快取**（2026-07-25 導入）：production build 的 `output.filename` / `output.chunkFilename` 帶 `[contenthash:8]`（`bundle.xxxxxxxx.js`、`[id].bundle.xxxxxxxx.js`），內容沒變 hash 就不變（webpack 5 production 預設 deterministic ids），改一支 view 只有該 chunk 與主 bundle 換檔名；**development 必須維持固定檔名**，HMR 與 contenthash 不相容會直接編譯失敗，`HotModuleReplacementPlugin` 也因此改為僅 development 掛載。配套是 `app.js` 讓 `index.html` 回 `Cache-Control: no-cache`（express.static 的 `setHeaders`、`app.get('/')`、SPA fallback 三處都要設，後兩者繞過 static），否則瀏覽器快取住舊 html、裡面寫的還是舊 hash，等於沒改。註解類修改重 build 後 hash 不變是正常的——production 壓縮後產出內容相同。反過來，**動 `webpack.config.js` 的 `module.rules` 會讓幾乎所有 chunk 換檔名**：vue-loader 產生的 inline request 帶 `ruleSet[1].rules[N]` 索引，刪掉一條 rule 會讓後面的規則全部位移，連帶改變 module identifier、deterministic id 與 contenthash（2026-07-29 移除 `.tsx?` rule 實測：54 個檔案的 chunk id 與 hash 全變，總位元組只差 3 bytes——差的是 id 位數）。這是一次性重新編號、不是內容變動，但**做基準比對驗證時必須把 rules 的改動單獨隔離出來測**，否則會誤判成「產出變了」
 - **跑 `npm run dev` 會清空 `client/dist/`**：`CleanWebpackPlugin` 在 dev server 啟動時就執行清除，但 webpack-dev-server 的產出只存在記憶體（不寫磁碟），所以 dev server 一停，`dist` 就是空的——看起來像部署檔還在，實際已無。開發完要部署或用 port 80 實跑前，務必重新 `npm run build`
-- **npm workspaces 安裝規則**（2026-07-29 盤點）：一律從根目錄下指令——`npm install`（全部）／`npm install -w client <pkg>`（裝到某個 workspace）／`npm install -D <pkg>`（裝到根，僅限跨 workspace 的工具如 concurrently），**絕不可 `cd client && npm install`**。現況三份 `node_modules` 完全沒 hoist（共 391.7 MB／50,565 檔）就是這樣造成的：client／server 的 `node_modules` 建於 2026-03-17、早於根目錄 03-18，npm arborist 讀到既有樹後傾向不搬移，於是 185 個版本相同的套件（webpack、@types/node、caniuse-lite、lodash…）兩邊各存一份，白白多 21.5 MB／約 5,900 檔（見 P2-10）。另外三條：(a) lock 檔只該有根層一份，`client/`／`server/` 底下那兩份是改 workspaces 前的殘留；(b) 套件實體被 hoist 到根**不代表宣告可以省**，子 `package.json` 必須宣告自己 import 的每一個套件，否則是 phantom dependency——現在能跑可能只因為另一邊裝了同一個套件，那邊一移除就無預警壞掉；(c) server 執行期 `require()` 到的一律放 `dependencies`，放 `devDependencies` 在 `npm ci --omit=dev` 部署時會 MODULE_NOT_FOUND（`cors` 已中招，見 P2-12）；client 因為打包後只出 `dist/`、`node_modules` 不上線，放哪不影響部署，但仍照慣例分
+- **npm workspaces 安裝規則**（2026-07-29 盤點）：一律從根目錄下指令——`npm install`（全部）／`npm install -w client <pkg>`（裝到某個 workspace）／`npm install -D <pkg>`（裝到根，僅限跨 workspace 的工具如 concurrently），**絕不可 `cd client && npm install`**。2026-07-29 重裝前，三份 `node_modules` 完全沒 hoist（共 391.7 MB／50,565 檔）就是這樣造成的：client／server 的 `node_modules` 建於 2026-03-17、早於根目錄 03-18，npm arborist 讀到既有樹後傾向不搬移，於是 185 個版本相同的套件兩邊各存一份。現已重裝為單一 `node_modules`（326 MB／42,701 檔，見 P2-10），**再犯一次就會退回原狀**。另外三條：(a) lock 檔只該有根層一份，`client/`／`server/` 底下那兩份是改 workspaces 前的殘留；(b) 套件實體被 hoist 到根**不代表宣告可以省**，子 `package.json` 必須宣告自己 import 的每一個套件，否則是 phantom dependency——現在能跑可能只因為另一邊裝了同一個套件，那邊一移除就無預警壞掉；(c) server 執行期 `require()` 到的一律放 `dependencies`，放 `devDependencies` 在 `npm ci --omit=dev` 部署時會 MODULE_NOT_FOUND（`cors` 已中招，見 P2-12）；client 因為打包後只出 `dist/`、`node_modules` 不上線，放哪不影響部署，但仍照慣例分
 - 使用 lodash 的檔案一律明確 `import _ from 'lodash'`，不可依賴 webpack AMD 模擬讓 lodash 掛上 `window._` 的副作用（2026-07-21 已全數補齊）
 - 通用工具 CSS（`.ma2/.ma4/.ma8/.ma16`、`.mv2/.mv4/.mv8`、`.fstart/.fcenter/.fend`、`.item-align`、`.shadow`）集中於 `assets/style.css`，元件內不再重複定義；同名但內容不同者（PD04 的 `.fstart`、PM01 與 App.vue 的 `.item-align`）保留在元件內，以 scoped 較高特異度覆蓋全域
 - `el-col` 上掛 `.fstart/.fcenter/.fend` 會被 Element Plus 的 `.el-col-N { display: block }` 蓋掉（bundle 排序在 style.css 之後），style.css 已用 `.el-col.fstart` 等較高特異度規則還原 flex；需要「保留上下間距但右緣要對齊容器」時用 `.mv*`（垂直 margin），不要用 `.ma*`（四邊 margin 會造成水平內縮/偏移）
@@ -172,7 +170,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 | P2-7 | CI | ⬜ | | 行有餘力再加 |
 | P2-8 | `package-lock.json` 納入版控 | ✅ | 2026-07-29 | 原本被 `.gitignore` 忽略，53 個直接相依全用 `^` 範圍，別人 clone 後 `npm install` 裝到的不是同一組版本——「build 不過」多半源自此，比 Node 版本嚴重（實測佐證：不帶 lock 從頭安裝，337 個套件版本與現況不同，見 P2-10）。作法：`.gitignore` 刪掉 `package-lock.json` 該行（**不改成忽略子層兩份**——日後誤跑 `cd client && npm install` 冒出的 lock 要能出現在 `git status` 當警訊），刪除 `client/package-lock.json` 與 `server/package-lock.json`（皆 2026-03-17 殘留，workspaces 專案只該有根層一份），提交根層 lock。這份 lock 同時是 P2-10 的第一層退路 |
 | P2-9 | 記錄 Node 版本需求 | ⬜ | | 目前 `.nvmrc`／`.node-version`／`engines`／CI 全都沒有（2026-07-28 盤點）。實測環境 Node v22.20.0 + npm 10.9.3；由已安裝套件反推下限為 Node ≥ 18，但 minimatch 等宣告 `18 \|\| 20 \|\| >=22`，奇數非 LTS 版不支援。建議根 package.json 加 `engines`（`^18.12 \|\| ^20.9 \|\| ^22.11 \|\| ^24`）＋ `.nvmrc`；要強制擋則另加 `.npmrc` 的 `engine-strict=true` |
-| P2-10 | 三個 `node_modules` 重裝為正常 hoist 結構 | ⬜ | | 現況三份共 391.7 MB／50,565 檔：`node_modules/`（7.1 MB，只有 `concurrently`＋`nodemon` 及其相依，另有 `piapp`→`client`、`piserv`→`server` 兩個 junction，是 workspaces 的定位機制）、`client/node_modules/`（253.1 MB）、`server/node_modules/`（131.5 MB）。root lock 明確把 525／461 筆記在子層，等於**完全沒有 hoist**——因為 client／server 的 `node_modules` 建於 2026-03-17，比 root（03-18）早，npm arborist 讀到既有樹後傾向不搬移。兩邊重複且版本完全相同的有 185 個套件（webpack 5.74 MB、@types/node 2.38 MB、caniuse-lite 2.23 MB、lodash、ajv…），**實測可省 21.5 MB／約 5,900 檔**。**執行程序見表格下方「P2-10 執行程序」**，動工前務必逐條看過——含事前基準取樣、Windows 檔案鎖定、兩層退路與版本漂移的處理 |
+| P2-10 | 三個 `node_modules` 重裝為正常 hoist 結構 | ✅ | 2026-07-29 | **結果：50,565 檔／391.7 MB → 42,701 檔／326.0 MB（省 7,864 檔／65.7 MB），`client/`／`server/` 底下不再有 `node_modules`，兩個 junction 由 npm 自動重建。`npm install` 42 秒（cache 熱），776 packages。lock 內套件 720 → 665 種，187 個版本變動、其中 45 個跨大版號。驗證全過，詳見下方「P2-10 執行記錄」。** 以下為原始盤點依據——現況三份共 391.7 MB／50,565 檔：`node_modules/`（7.1 MB，只有 `concurrently`＋`nodemon` 及其相依，另有 `piapp`→`client`、`piserv`→`server` 兩個 junction，是 workspaces 的定位機制）、`client/node_modules/`（253.1 MB）、`server/node_modules/`（131.5 MB）。root lock 明確把 525／461 筆記在子層，等於**完全沒有 hoist**——因為 client／server 的 `node_modules` 建於 2026-03-17，比 root（03-18）早，npm arborist 讀到既有樹後傾向不搬移。兩邊重複且版本完全相同的有 185 個套件（webpack 5.74 MB、@types/node 2.38 MB、caniuse-lite 2.23 MB、lodash、ajv…），**實測可省 21.5 MB／約 5,900 檔**。**執行程序見表格下方「P2-10 執行程序」**，動工前務必逐條看過——含事前基準取樣、Windows 檔案鎖定、兩層退路與版本漂移的處理 |
 | P2-11 | 清掉前後端的無用相依 | ✅ | 2026-07-29 | 已移除下列宣告（**只改 package.json，node_modules 實體待 P2-10 重裝時才會真的消失**）。後端刪 `webpack`＋`webpack-cli`（連同死設定檔 `server/webpack.config.js` 與 2025-06 舊打包殘留 `server/dist/`）、`sqlite3`、`mssql`、`moment`、`form-data`、`express-fileupload`、`stream`／`url`／`path`／`fs`；`tedious` 保留（Sequelize 的 mssql driver 是動態載入，grep 查不到 require 但不可刪）。前端刪 `chart.js`、`vue3-dropzone`（`@kurkle` 是 chart.js 的間接相依，本來就沒宣告，不必處理）。**驗證**：只改 package.json、webpack.config.js 不動的情況下重 build，產出與基準位元組完全相同（54 檔／18,170,563 bytes），證明這些套件從未被打包。以下為原始盤點依據——**後端**：2026-07-29 盤點 `server/` 全部 `require()`（排除 `node_modules`、`dist`）後，以下宣告在 package.json 卻從未被 require：`webpack`＋`webpack-cli`（devDep，7.9 MB；`server/webpack.config.js` 也是死設定，`start`/`dev` 都直接跑 `app.js`，`server/dist/server.js` 是 2025-06 的舊打包殘留）、`sqlite3`（5.3 MB 原生模組，專案只用 MS SQL）、`mssql`（4.8 MB，Sequelize 走 `tedious`，`tedious` 必須保留）、`moment`（已有 dayjs）、`form-data`、`express-fileupload`（實際在用的是 `multer`，這兩個功能重疊）、`stream`／`url`／`path`／`fs`（後兩者是 npm 上的佔位套件，Node 內建模組優先解析所以無害，但純屬垃圾）。合計約 20 MB。**前端**：`chart.js`（6.1 MB）＋`@kurkle` 全專案 0 處引用，所有圖表都走 echarts；`vue3-dropzone` 也 0 處引用。與 P2-4 的 typescript（22.9 MB）＋ts-loader 一併清掉，前端可省約 29 MB |
 | P2-12 | `cors` 從 devDependencies 移到 dependencies | ✅ | 2026-07-29 | 採「移到 dependencies」而非刪除——`app.js` 的 `require` 是活的，移宣告零執行期風險。以下為原始問題描述：`server/app.js:5` 的 `const cors = require('cors')` 是活的程式碼（只有 `app.use(cors())` 被註解掉），但 `cors` 宣告在 `server/package.json` 的 devDependencies。目前開發機全裝所以沒事，一旦以 `npm ci --omit=dev`／`npm install --production` 部署，server 會在啟動第 5 行就 MODULE_NOT_FOUND。兩種修法擇一：移到 dependencies，或確定不用 CORS 就連 require 一起刪 |
 | **P3 使用者可見的改善（成本低）** |||||
@@ -201,11 +199,9 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 | P5-14 | getBy 收到物件型態參數會 500 | ⬜ | | `?key[sub]=x` 會讓 val 變物件，bind 參數炸掉；應在白名單檢查時一併擋掉非字串值 |
 | P5-15 | PD05 新增購案的 `neworder` 從不重置 | ⬜ | | 開啟對話框只做 `addOrdersDlg = true`，欄位沿用上一筆的值（2026-07-28 實測確認）；`y6tserialno` 因 `addOrders` 無條件覆寫而無影響，但其他欄位可能被誤存 |
 
-### P2-10 執行程序
+### P2-10 執行程序與執行記錄
 
-重裝 `node_modules` 會一次動到 391.7 MB／50,565 個檔案，且必然伴隨版本漂移，動工前逐條確認。
-
-> **現況提醒（2026-07-29）**：P2-11／P2-12／P2-4 已刪掉 15 個宣告但**沒有重跑 `npm install`**，所以 `package.json` 與 `package-lock.json` 目前是不同步的，`npm ci` 會拒絕執行（`npm install` 不受影響）。這個狀態由本步驟的重裝一次解決；在那之前要用 `npm ci`，得先把三個 `package.json` 連同 lock 一起 `git checkout` 回 P2-8 那個 commit。
+**已於 2026-07-29 執行完畢**，以下程序保留作為日後重裝 `node_modules` 的標準作業（實際結果見本節末的「執行記錄」）。重裝會一次動到數萬個檔案且必然伴隨版本漂移，動工前逐條確認。
 
 **前置（做完才能開始）**
 
@@ -217,7 +213,9 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 **執行**
 
 5. **實體備份**三個 `node_modules` 與三份 lock 到 `pi/` 外面（如 `D:\work\project\claude\pi-nm-backup`，不在 repo 內）：`robocopy <來源> <目的> /MIR /XJ /NFL /NDL /NJH /NJS`。**`/XJ` 不可省**，否則會鑽進 `piapp`／`piserv` 兩個 junction 把 client、server 各再複製一遍（就是把根目錄誤量成 421 MB 的那個陷阱）。
-6. **刪掉三個 `node_modules` 與三份 `package-lock.json`**——**三個 `package.json` 全部保留**。這一步只改套件實體的擺放位置，不動任何宣告；實體被 hoist 到根不代表子層宣告可以省，否則變成 phantom dependency（見開發注意事項）。Windows 刪 5 萬個小檔不快，預留時間。
+6. **刪掉三個 `node_modules` 與 `package-lock.json`**——**三個 `package.json` 全部保留**。這一步只改套件實體的擺放位置，不動任何宣告；實體被 hoist 到根不代表子層宣告可以省，否則變成 phantom dependency（見開發注意事項）。
+
+   **⚠ 刪除順序不可顛倒**：根 `node_modules` 裡的 `piapp`／`piserv` 是指向 `client/`／`server/` 的 junction，**PowerShell 5.1 的 `Remove-Item -Recurse` 有機會穿過 junction 把整個前後端原始碼刪掉**。務必先用 `cmd /c rmdir "<path>\node_modules\piapp"`（不加 `/s`，只移除連結本身）拆掉兩個 junction，確認 `client/src`、`server/` 檔數沒變，再刪本體。刪本體用 `cmd /c rd /s /q`（不跟隨 reparse point，且比 `Remove-Item` 快很多——實測 5 萬個檔 5.5 秒）。
 7. **從根跑 `npm install`**（不可 `cd client`）。實測 scratchpad 同構安裝耗時 7 分鐘，產出單一份 378.4 MB／44,653 檔，`client/`／`server/` 底下不再有 `node_modules`；126 筆版本衝突以巢狀形式收在根 `node_modules` 內各套件目錄下，那才是子層 `node_modules` 唯一的正當存在理由。
 
 **驗證（缺一不可）**
@@ -236,5 +234,24 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 
 **兩點提醒**
 
-- 版本漂移**無法靠保留舊 lock 迴避**——舊 lock 記的正是現在這個未 hoist 的擺放位置，`npm ci` 只會把它原樣重現。只能靠退路與驗證控管。
-- `npm dedupe` 理論上能在不刪 lock 的情況下把重複往上提、可能繞開部分漂移，但**未在本專案實測過**，不確定對「子層 node_modules 各存一份」這種未 hoist 的樹是否有效。要用先在 scratchpad 複製同構專案試。
+- 版本漂移**無法靠保留舊 lock 迴避**——舊 lock 記的正是未 hoist 的擺放位置，`npm ci` 只會把它原樣重現。只能靠退路與驗證控管。
+- `npm dedupe` 理論上能在不刪 lock 的情況下把重複往上提、可能繞開部分漂移，但**未在本專案實測過**。2026-07-29 直接走了重裝這條路，所以這個問題仍然沒有答案。
+
+**執行記錄（2026-07-29）**
+
+| 項目 | 結果 |
+|---|---|
+| 備份 | `D:\work\project\claude\pi-nm-backup\{root-nm,client-nm,server-nm}` ＋ lock，50,565 檔／391.6 MB，與盤點數字吻合（robocopy 加了 `/MT:16` 加速） |
+| 刪除 | 先 `rmdir` 拆兩個 junction 並確認 `client/src` 106 檔、`server` 98 檔未動，再 `rd /s /q`，全程 5.5 秒 |
+| 安裝 | `npm install --no-audit --no-fund` **42 秒**（npm cache 是熱的；scratchpad 冷 cache 那次要 7 分鐘），added 776 packages |
+| 結果 | 42,701 檔／326.0 MB，單一 `node_modules`，junction 自動重建 |
+| 版本漂移 | lock 內套件 720 → 665 種；移除 85、新增 30、版本變動 187，其中**跨大版號 45 個**。碰到執行期的是 `@ctrl/tinycolor` 3.6.1→4.2.0、`@vueuse/core` 9.13.0→14.3.0（皆 Element Plus 相依）、`proxy-from-env` 1→2（axios）、`entities` 4.5.0→7.0.1（Vue compiler）、`tedious` 18.6.1→18.6.2 ＋ `@azure/msal-*` 大跳。`selfsigned`、`@jsonjoy.com/*`、`@types/node` 只在 dev／型別 |
+| 驗證 8 build | 54 檔／18,170,566 → 18,238,327 bytes（+0.37%）。**位元組比對在此步不適用**——webpack 自己從 5.105.4 跳到 5.109.2，產出本來就會變；改以下三項功能驗證為準 |
+| 驗證 9 API | `/api/basic/`、`/api/orders/`、`/api/employee/`、`/api/taskcategory/`、`/api/ugroup/` 全 200，**回應位元組數與重裝前完全相同**（1,937,659／5,997,713／53,402／557），tedious 18.6.2 輸出一致 |
+| 驗證 10 瀏覽器 | 登入 → PM01 看板 → PM02/PD05 進度表 → PS01 KPI（表格＋ECharts 甜甜圈圖）→ PD05「工程月報」PDF 匯出（345,958 bytes，`%PDF-1.3` 檔頭、`%%EOF` 檔尾、NotoSansTC 中文正常）。**全程 console 0 errors 0 warnings**，Element Plus 的 tabs／radio group／日期選擇器／對話框／checkbox 渲染皆正常，tinycolor 4.x 與 vueuse 14.x 未造成視覺破壞 |
+| 收尾 | 新 lock 已提交；備份 `pi-nm-backup` **暫時保留**，觀察數日確認無異常再刪 |
+
+**這次執行對原程序的兩處修正**（已直接寫回上面的步驟）：
+
+1. 步驟 6 原本只寫「刪掉三個 `node_modules`」，沒提 junction 的致命風險——`Remove-Item -Recurse` 可能穿過 `piapp`／`piserv` 刪掉原始碼。已補上「先 `rmdir` 拆 junction、再 `rd /s /q`」的順序。
+2. 步驟 13 第一層退路原本只還原 lock，但 P2-11／P2-12／P2-4 改過 `package.json` 之後，`npm ci` 會先檢查兩者同步、直接拒絕執行。已改為三個 `package.json` 連同 lock 一起 `git checkout`。
