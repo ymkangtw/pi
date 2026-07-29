@@ -1,6 +1,5 @@
 node_modules/
 dist/
 .env
-package-lock.json
 **/package_bak.json
 analysis-report.md

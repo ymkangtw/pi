@@ -23,7 +23,7 @@
 ```
 pi/
 ├── package.json                     # npm workspaces root (client, server)
-├── package-lock.json                # 根 lock（目前被 .gitignore 忽略，見 Backlog P2-8）
+├── package-lock.json                # 根 lock（已納入版控，全專案唯一一份，見 Backlog P2-8）
 ├── node_modules/                    # 只有 concurrently + nodemon 及其相依（7 MB）
 │   ├── piapp -> client/             # workspace junction（名稱取自 client/package.json 的 name）
 │   └── piserv -> server/            # workspace junction，npm run -w 靠它定位
@@ -169,7 +169,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 | P2-5 | 引入 ESLint + Prettier | ⬜ | | |
 | P2-6 | 補最小測試框架 | ⬜ | | 後端 controller 與前端金額計算邏輯（如 PD05 `syncOrderFromItems`）優先 |
 | P2-7 | CI | ⬜ | | 行有餘力再加 |
-| P2-8 | `package-lock.json` 納入版控 | ⬜ | | 目前被 `.gitignore` 忽略，53 個直接相依全用 `^` 範圍，別人 clone 後 `npm install` 裝到的不是同一組版本——「build 不過」多半源自此，比 Node 版本嚴重。順帶刪除 `client/package-lock.json` 與 `server/package-lock.json`（皆為 2026-03-17 殘留，workspaces 專案只該有根層一份 lock）。實測佐證：不帶 lock 從頭安裝，337 個套件版本與現況不同（見 P2-10） |
+| P2-8 | `package-lock.json` 納入版控 | ✅ | 2026-07-29 | 原本被 `.gitignore` 忽略，53 個直接相依全用 `^` 範圍，別人 clone 後 `npm install` 裝到的不是同一組版本——「build 不過」多半源自此，比 Node 版本嚴重（實測佐證：不帶 lock 從頭安裝，337 個套件版本與現況不同，見 P2-10）。作法：`.gitignore` 刪掉 `package-lock.json` 該行（**不改成忽略子層兩份**——日後誤跑 `cd client && npm install` 冒出的 lock 要能出現在 `git status` 當警訊），刪除 `client/package-lock.json` 與 `server/package-lock.json`（皆 2026-03-17 殘留，workspaces 專案只該有根層一份），提交根層 lock。這份 lock 同時是 P2-10 的第一層退路 |
 | P2-9 | 記錄 Node 版本需求 | ⬜ | | 目前 `.nvmrc`／`.node-version`／`engines`／CI 全都沒有（2026-07-28 盤點）。實測環境 Node v22.20.0 + npm 10.9.3；由已安裝套件反推下限為 Node ≥ 18，但 minimatch 等宣告 `18 \|\| 20 \|\| >=22`，奇數非 LTS 版不支援。建議根 package.json 加 `engines`（`^18.12 \|\| ^20.9 \|\| ^22.11 \|\| ^24`）＋ `.nvmrc`；要強制擋則另加 `.npmrc` 的 `engine-strict=true` |
 | P2-10 | 三個 `node_modules` 重裝為正常 hoist 結構 | ⬜ | | 現況三份共 391.7 MB／50,565 檔：`node_modules/`（7.1 MB，只有 `concurrently`＋`nodemon` 及其相依，另有 `piapp`→`client`、`piserv`→`server` 兩個 junction，是 workspaces 的定位機制）、`client/node_modules/`（253.1 MB）、`server/node_modules/`（131.5 MB）。root lock 明確把 525／461 筆記在子層，等於**完全沒有 hoist**——因為 client／server 的 `node_modules` 建於 2026-03-17，比 root（03-18）早，npm arborist 讀到既有樹後傾向不搬移。兩邊重複且版本完全相同的有 185 個套件（webpack 5.74 MB、@types/node 2.38 MB、caniuse-lite 2.23 MB、lodash、ajv…），**實測可省 21.5 MB／約 5,900 檔**。**執行程序見表格下方「P2-10 執行程序」**，動工前務必逐條看過——含事前基準取樣、Windows 檔案鎖定、兩層退路與版本漂移的處理 |
 | P2-11 | 清掉前後端的無用相依 | ⬜ | | **後端**：2026-07-29 盤點 `server/` 全部 `require()`（排除 `node_modules`、`dist`）後，以下宣告在 package.json 卻從未被 require：`webpack`＋`webpack-cli`（devDep，7.9 MB；`server/webpack.config.js` 也是死設定，`start`/`dev` 都直接跑 `app.js`，`server/dist/server.js` 是 2025-06 的舊打包殘留）、`sqlite3`（5.3 MB 原生模組，專案只用 MS SQL）、`mssql`（4.8 MB，Sequelize 走 `tedious`，`tedious` 必須保留）、`moment`（已有 dayjs）、`form-data`、`express-fileupload`（實際在用的是 `multer`，這兩個功能重疊）、`stream`／`url`／`path`／`fs`（後兩者是 npm 上的佔位套件，Node 內建模組優先解析所以無害，但純屬垃圾）。合計約 20 MB。**前端**：`chart.js`（6.1 MB）＋`@kurkle` 全專案 0 處引用，所有圖表都走 echarts；`vue3-dropzone` 也 0 處引用。與 P2-4 的 typescript（22.9 MB）＋ts-loader 一併清掉，前端可省約 29 MB |
@@ -208,7 +208,7 @@ ER Model 詳見 `docs/ER-Model.md`（含關聯一覽表與注意事項）。補�
 
 1. **停掉所有佔用檔案的行程**——`npm start` 的 server、`npm run dev` 的 dev server、開著 `node_modules` 的編輯器索引。Windows 會鎖定執行中的檔案，沒停乾淨的話刪除會中途失敗、留下半殘的樹（`netstat -ano | findstr ":80 "` 確認 port 80／8080 都沒人監聽）。
 2. **取驗證基準**——先跑一次 `npm run build`，把 `client/dist` 的檔名清單與各檔位元組數存下來（`Get-ChildItem client\dist -Recurse -File | Select-Object Name, Length | Export-Csv`）。**沒有這份基準，步驟 8 的比對就無從做起**；注意 `npm run dev` 會清空 `dist`，取完基準到驗證之間不可跑 dev。
-3. **先完成 P2-8**——把現在確定能跑的 lock 提交進版控。現況 `.gitignore:4` 的 `package-lock.json` 不帶斜線，三份 lock 全被忽略，`git ls-files` 確認版控裡一份都沒有，等於此刻動手完全沒有退路。
+3. **P2-8 已於 2026-07-29 完成**——根層 lock（commit 當下確定能跑的那份）已進版控，子層兩份殘留 lock 已刪除。這是步驟 13 第一層退路的依據；動工前用 `git ls-files package-lock.json` 再確認一次它真的在版控裡。
 4. **若同時要做 P2-11／P2-12，先改 `package.json` 再重裝**——刪掉無用相依、把 `cors` 移到 dependencies，這樣重裝一次到位，不必裝完再刪再裝。
 
 **執行**
