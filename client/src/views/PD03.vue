@@ -308,9 +308,9 @@ const cardColor = (enddate) => {
 
                         </el-row>
                         <el-row>
-                            
-                            <div>合計: {{ weightTotal }} %</div>
-
+                            <el-col :span="24">
+                                <div class="ma8">合計: {{ weightTotal }} %</div>
+                            </el-col>
                         </el-row>
 
                     </el-tab-pane>
@@ -494,10 +494,15 @@ const cardColor = (enddate) => {
     width: 900px;
 }
 
+/* 用 min-height 不用 height：成員頁多一列進度條，內容實高 131px 塞不進 110px。
+   Element Plus 2.11.5 時 .el-card__body 沒有 overflow，超出的部分被卡片的
+   overflow:hidden 靜靜裁掉（進度條底部被切約 9px）；2.12 起 body 改為
+   overflow:auto，同一份內容就變成冒出捲軸。固定高度只是把裁切換成捲軸，
+   兩者都是病徵——真正的問題是高度不夠，所以改成下限值讓卡片自己長高。 */
 .card {
     cursor: pointer;
     width: 180px;
-    height: 110px;
+    min-height: 110px;
 }
 
 .card-header {

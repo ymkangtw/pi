@@ -155,6 +155,22 @@ const p = (value) => {
     width: 120px;
     height: 80px;
 }
+/* 文字置中必須設在 .el-card__body 上，不能只設在卡片根元素。
+   Element Plus 2.12 起 .el-card 自帶 display:flex + flex-direction:column、
+   .el-card__body 自帶 flex-grow:1，body 會撐滿整張卡，卡片層的
+   justify-content 沒有剩餘空間可分配，垂直置中就失效（2.11.5 時 .el-card
+   是 display:block、body 是 shrink-to-fit，才碰巧置中）。
+   scoped 樣式碰不到 Element Plus 內部元素，需要 :deep()。
+   box-sizing 要自己設——Element Plus 沒有全域 border-box reset。 */
+.option-card :deep(.el-card__body) {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
 .text-l {
     display: flex;
     align-items: center;
